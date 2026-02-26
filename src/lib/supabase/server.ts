@@ -9,9 +9,10 @@ import { createClient } from "@supabase/supabase-js";
 // tipos de database.types.ts, evitando el error "never" en .update()/.insert()
 // que ocurre cuando el shape Database manual no coincide exactamente con
 // la estructura interna que espera supabase-js.
+
 export function createServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
   if (!url || !key) {
     throw new Error("Faltan variables de entorno de Supabase (server)");

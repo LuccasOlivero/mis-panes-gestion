@@ -1,32 +1,34 @@
+/*
+ * PANTECA – Estilos globales
+ * Tailwind CSS v4
+ *
+ * BREAKING CHANGE v4 importante:
+ *   ❌ @layer components { .card { @apply ... } }  → falla: "Cannot apply unknown utility class"
+ *   ✅ @utility card { ... }                        → correcto, registra la clase como utilidad real
+ *
+ * En v4, Tailwind ya no intercepta @layer. Para que @apply funcione
+ * con clases custom, hay que declararlas con @utility.
+ * Cada @utility define exactamente una clase con su nombre.
+ *
+ * Referencia oficial: https://tailwindcss.com/docs/upgrade-guide#adding-custom-utilities
+ */
+
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────
-   @theme — Design tokens del proyecto
-   Cada variable --color-* genera utilidades bg-*, text-*, etc.
-   Cada variable --font-* genera utilidades font-*
+   @theme — Design tokens
    ───────────────────────────────────────────────────────── */
-@theme {
-  /* Tipografía */
+:root {
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Colores de marca — paleta cálida de panadería artesanal */
   --color-brand: #c8831a;
   --color-brand-light: #fef3e2;
   --color-brand-dark: #9a5e0a;
-
-  /* Superficie */
-  --color-bg: #fafaf8;
-  --color-surface: #ffffff;
-
-  /* Texto */
-  --color-text: #1c1917;
-  --color-text-soft: #57534e;
-  --color-muted: #a09890;
 }
 
 /* ─────────────────────────────────────────────────────────
-   Base — reset y defaults del body
+   @layer base — Solo CSS puro, sin @apply
    ───────────────────────────────────────────────────────── */
 @layer base {
   *,
@@ -34,7 +36,6 @@
   *::after {
     border-color: #e8e4df;
   }
-
   body {
     background-color: #fafaf8;
     color: #1c1917;
@@ -44,160 +45,392 @@
 }
 
 /* ─────────────────────────────────────────────────────────
-   Components — clases reutilizables con @apply
-   @apply sigue funcionando en Tailwind v4 dentro de @layer
+   @utility — Clases custom (reemplaza @layer components en v4)
    ───────────────────────────────────────────────────────── */
-@layer components {
-  /* ── Layout ─────────────────────────────── */
 
-  .page-header {
-    @apply sticky top-0 z-10 border-b border-stone-200 bg-white px-8 py-6;
+/* ── Layout ───────────────────────────────────────────────── */
+
+@utility page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #fff;
+  padding: 1.5rem 2rem;
+}
+
+@utility page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: #1c1917;
+}
+
+@utility page-subtitle {
+  margin-top: 0.125rem;
+  font-size: 0.875rem;
+  color: #78716c;
+}
+
+@utility page-content {
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+
+@utility card {
+  border-radius: 0.75rem;
+  border: 1px solid #e8e4df;
+  background-color: #fff;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+@utility card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f5f4f2;
+  padding: 1rem 1.5rem;
+}
+
+@utility card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #78716c;
+}
+
+@utility card-body {
+  padding: 1.5rem;
+}
+
+/* ── Stats ────────────────────────────────────────────────── */
+
+@utility stat-card {
+  border-radius: 0.75rem;
+  border: 1px solid #e8e4df;
+  background-color: #fff;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+@utility stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #78716c;
+}
+
+@utility stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1c1917;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+@utility badge-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+@utility badge-closed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #f5f5f4;
+  color: #57534e;
+}
+
+@utility badge-morning {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+@utility badge-afternoon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+@utility badge-cancelled {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+@utility badge-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+/* ── Tabla ────────────────────────────────────────────────── */
+
+@utility data-table {
+  width: 100%;
+  font-size: 0.875rem;
+
+  & thead tr {
+    border-bottom: 1px solid #f5f4f2;
   }
 
-  .page-title {
-    @apply text-2xl font-semibold tracking-tight text-stone-900;
+  & thead th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #78716c;
+    white-space: nowrap;
   }
 
-  .page-subtitle {
-    @apply mt-0.5 text-sm text-stone-500;
+  & tbody tr {
+    border-bottom: 1px solid #fafaf8;
+    transition: background-color 150ms;
+    &:hover {
+      background-color: #fafaf8;
+    }
   }
 
-  .page-content {
-    @apply space-y-6 px-8 py-6;
+  & tbody td {
+    padding: 0.75rem 1rem;
+    color: #44403c;
+  }
+}
+
+/* ── Formulario ───────────────────────────────────────────── */
+
+@utility form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #44403c;
+  margin-bottom: 0.375rem;
+}
+
+@utility form-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e8e4df;
+  background-color: #fff;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1c1917;
+  outline: none;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+
+  &::placeholder {
+    color: #a8a29e;
   }
 
-  /* ── Card ────────────────────────────────── */
-
-  .card {
-    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+  &:focus {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgb(217 119 6 / 0.15);
   }
+}
 
-  .card-header {
-    @apply flex items-center justify-between border-b border-stone-100 px-6 py-4;
+@utility form-select {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #e8e4df;
+  background-color: #fff;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1c1917;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+
+  &:focus {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgb(217 119 6 / 0.15);
   }
+}
 
-  .card-title {
-    @apply text-xs font-semibold uppercase tracking-wider text-stone-500;
+@utility form-error {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+}
+
+/* ── Botones ──────────────────────────────────────────────── */
+
+@utility btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background-color: #d97706;
+  color: #fff;
+  transition:
+    background-color 150ms,
+    box-shadow 150ms;
+
+  &:hover:not(:disabled) {
+    background-color: #b45309;
   }
-
-  .card-body {
-    @apply p-6;
+  &:focus-visible {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #d97706;
   }
-
-  /* ── Stats ───────────────────────────────── */
-
-  .stat-card {
-    @apply card flex flex-col gap-1 p-5;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
+}
 
-  .stat-label {
-    @apply text-xs font-medium uppercase tracking-wider text-stone-500;
+@utility btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background-color: #f5f5f4;
+  color: #44403c;
+  transition: background-color 150ms;
+
+  &:hover:not(:disabled) {
+    background-color: #e7e5e4;
   }
-
-  .stat-value {
-    @apply tabular-nums text-2xl font-semibold text-stone-900;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
+}
 
-  /* ── Badges ──────────────────────────────── */
+@utility btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background-color: #dc2626;
+  color: #fff;
+  transition:
+    background-color 150ms,
+    box-shadow 150ms;
 
-  .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  &:hover:not(:disabled) {
+    background-color: #b91c1c;
   }
-
-  .badge-open {
-    @apply badge bg-green-100 text-green-700;
+  &:focus-visible {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #dc2626;
   }
-
-  .badge-closed {
-    @apply badge bg-stone-100 text-stone-600;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
+}
 
-  .badge-morning {
-    @apply badge bg-amber-100 text-amber-700;
+@utility btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  background-color: transparent;
+  color: #57534e;
+  transition:
+    background-color 150ms,
+    color 150ms;
+
+  &:hover:not(:disabled) {
+    background-color: #f5f5f4;
+    color: #1c1917;
   }
-
-  .badge-afternoon {
-    @apply badge bg-orange-100 text-orange-700;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
+}
 
-  .badge-cancelled {
-    @apply badge bg-red-100 text-red-600;
-  }
-
-  .badge-active {
-    @apply badge bg-green-100 text-green-700;
-  }
-
-  /* ── Tabla ───────────────────────────────── */
-
-  .data-table {
-    @apply w-full text-sm;
-  }
-
-  .data-table thead tr {
-    @apply border-b border-stone-100;
-  }
-
-  .data-table thead th {
-    @apply whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500;
-  }
-
-  .data-table tbody tr {
-    @apply border-b border-stone-50 transition-colors hover:bg-stone-50;
-  }
-
-  .data-table tbody td {
-    @apply px-4 py-3 text-stone-700;
-  }
-
-  /* ── Formulario ──────────────────────────── */
-
-  .form-label {
-    @apply mb-1.5 block text-sm font-medium text-stone-700;
-  }
-
-  .form-input {
-    @apply w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5
-           text-sm text-stone-900 placeholder:text-stone-400
-           outline-none transition-all
-           focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20;
-  }
-
-  .form-select {
-    @apply form-input cursor-pointer appearance-none;
-  }
-
-  .form-error {
-    @apply mt-1 text-xs text-red-600;
-  }
-
-  /* ── Botones ─────────────────────────────── */
-
-  .btn {
-    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
-           px-4 py-2.5 text-sm font-medium transition-all outline-none
-           focus:ring-2 focus:ring-offset-1
-           disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .btn-primary {
-    @apply btn bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500;
-  }
-
-  .btn-secondary {
-    @apply btn bg-stone-100 text-stone-700 hover:bg-stone-200 focus:ring-stone-400;
-  }
-
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
-  }
-
-  .btn-ghost {
-    @apply btn bg-transparent text-stone-600 hover:bg-stone-100 focus:ring-stone-400;
-  }
-
-  /* Modificador de tamaño — se combina con btn-* */
-  .btn-sm {
-    @apply px-3 py-1.5 text-xs;
-  }
+@utility btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
 }

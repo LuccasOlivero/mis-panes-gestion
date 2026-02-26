@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,7 +13,6 @@ import {
   Croissant,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils/cn";
-import { ShiftStatusBadge } from "../shifts/ShiftStatusBadge";
 
 const NAV = [
   { href: "/turnos", label: "Turnos", icon: Clock },
@@ -23,7 +23,16 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 
-export function Sidebar() {
+interface Props {
+  /**
+   * ShiftStatusBadge se renderiza en layout.tsx (Server Component)
+   * y se pasa como prop para evitar llamar un Server Component
+   * async desde dentro de un Client Component.
+   */
+  shiftBadge: ReactNode;
+}
+
+export function Sidebar({ shiftBadge }: Props) {
   const pathname = usePathname();
 
   return (
@@ -43,10 +52,8 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Turno activo — Server Component asyncrono */}
-      <div className="border-b border-stone-100 px-4 py-3">
-        <ShiftStatusBadge />
-      </div>
+      {/* Turno activo — viene del Server Component padre (layout.tsx) */}
+      <div className="border-b border-stone-100 px-4 py-3">{shiftBadge}</div>
 
       {/* Navegación */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
