@@ -1,26 +1,203 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─────────────────────────────────────────────────────────
+   @theme — Design tokens del proyecto
+   Cada variable --color-* genera utilidades bg-*, text-*, etc.
+   Cada variable --font-* genera utilidades font-*
+   ───────────────────────────────────────────────────────── */
+@theme {
+  /* Tipografía */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Colores de marca — paleta cálida de panadería artesanal */
+  --color-brand: #c8831a;
+  --color-brand-light: #fef3e2;
+  --color-brand-dark: #9a5e0a;
+
+  /* Superficie */
+  --color-bg: #fafaf8;
+  --color-surface: #ffffff;
+
+  /* Texto */
+  --color-text: #1c1917;
+  --color-text-soft: #57534e;
+  --color-muted: #a09890;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ─────────────────────────────────────────────────────────
+   Base — reset y defaults del body
+   ───────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: #e8e4df;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: #fafaf8;
+    color: #1c1917;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─────────────────────────────────────────────────────────
+   Components — clases reutilizables con @apply
+   @apply sigue funcionando en Tailwind v4 dentro de @layer
+   ───────────────────────────────────────────────────────── */
+@layer components {
+  /* ── Layout ─────────────────────────────── */
+
+  .page-header {
+    @apply sticky top-0 z-10 border-b border-stone-200 bg-white px-8 py-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-stone-900;
+  }
+
+  .page-subtitle {
+    @apply mt-0.5 text-sm text-stone-500;
+  }
+
+  .page-content {
+    @apply space-y-6 px-8 py-6;
+  }
+
+  /* ── Card ────────────────────────────────── */
+
+  .card {
+    @apply rounded-xl border border-stone-200 bg-white shadow-sm;
+  }
+
+  .card-header {
+    @apply flex items-center justify-between border-b border-stone-100 px-6 py-4;
+  }
+
+  .card-title {
+    @apply text-xs font-semibold uppercase tracking-wider text-stone-500;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  /* ── Stats ───────────────────────────────── */
+
+  .stat-card {
+    @apply card flex flex-col gap-1 p-5;
+  }
+
+  .stat-label {
+    @apply text-xs font-medium uppercase tracking-wider text-stone-500;
+  }
+
+  .stat-value {
+    @apply tabular-nums text-2xl font-semibold text-stone-900;
+  }
+
+  /* ── Badges ──────────────────────────────── */
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+
+  .badge-open {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  .badge-closed {
+    @apply badge bg-stone-100 text-stone-600;
+  }
+
+  .badge-morning {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-afternoon {
+    @apply badge bg-orange-100 text-orange-700;
+  }
+
+  .badge-cancelled {
+    @apply badge bg-red-100 text-red-600;
+  }
+
+  .badge-active {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  /* ── Tabla ───────────────────────────────── */
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table thead tr {
+    @apply border-b border-stone-100;
+  }
+
+  .data-table thead th {
+    @apply whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-stone-500;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-stone-50 transition-colors hover:bg-stone-50;
+  }
+
+  .data-table tbody td {
+    @apply px-4 py-3 text-stone-700;
+  }
+
+  /* ── Formulario ──────────────────────────── */
+
+  .form-label {
+    @apply mb-1.5 block text-sm font-medium text-stone-700;
+  }
+
+  .form-input {
+    @apply w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5
+           text-sm text-stone-900 placeholder:text-stone-400
+           outline-none transition-all
+           focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20;
+  }
+
+  .form-select {
+    @apply form-input cursor-pointer appearance-none;
+  }
+
+  .form-error {
+    @apply mt-1 text-xs text-red-600;
+  }
+
+  /* ── Botones ─────────────────────────────── */
+
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg
+           px-4 py-2.5 text-sm font-medium transition-all outline-none
+           focus:ring-2 focus:ring-offset-1
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500;
+  }
+
+  .btn-secondary {
+    @apply btn bg-stone-100 text-stone-700 hover:bg-stone-200 focus:ring-stone-400;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-stone-600 hover:bg-stone-100 focus:ring-stone-400;
+  }
+
+  /* Modificador de tamaño — se combina con btn-* */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
 }

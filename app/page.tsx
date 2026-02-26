@@ -1,3 +1,5 @@
-export default function Home() {
-  return <h2>Home</h2>;
+import { redirect } from "next/navigation";
+
+export default function HomePage() {
+  redirect("/turnos");
 }
