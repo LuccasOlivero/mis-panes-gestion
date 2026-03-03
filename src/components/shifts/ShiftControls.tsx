@@ -1,56 +1,69 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { openShiftAction, closeShiftAction } from "@/src/actions/shift.actions"
-import type { OpenShiftSummary } from "@/src/types/shift.types"
-import { shiftTypeLabel } from "@/src/modules/shifts/domain/shift.entity"
-import { formatTime } from "@/src/lib/utils/dates"
-import { Play, Square, Clock, User, AlertCircle } from "lucide-react"
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { openShiftAction, closeShiftAction } from "@/src/actions/shift.actions";
+import type { OpenShiftSummary } from "@/src/types/shift.types";
+import { shiftTypeLabel } from "@/src/modules/shifts/domain/shift.entity";
+import { formatTime } from "@/src/lib/utils/dates";
+import { Play, Square, Clock, User, AlertCircle } from "lucide-react";
 
 interface Props {
-  openShift: OpenShiftSummary | null
+  openShift: OpenShiftSummary | null;
 }
 
 export function ShiftControls({ openShift }: Props) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-  const [managerName, setManagerName] = useState("")
-  const [shiftType, setShiftType] = useState<"morning" | "afternoon">("morning")
-  const [showForm, setShowForm] = useState(false)
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [managerName, setManagerName] = useState("");
+  const [shiftType, setShiftType] = useState<"morning" | "afternoon">(
+    "morning",
+  );
+  const [showForm, setShowForm] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   function handleOpen() {
     if (!managerName.trim()) {
-      setError("El nombre del responsable es obligatorio.")
-      return
+      setError("El nombre del responsable es obligatorio.");
+      return;
     }
-    setError(null)
+
+    setError(null);
+
+    const confirmed = confirm(
+      "Vas a iniciar el turno a nombre de " + managerName + ". ¿Continuar?",
+    );
+
+    if (!confirmed) return;
+
     startTransition(async () => {
-      const result = await openShiftAction({ shiftType, managerName: managerName.trim() })
+      const result = await openShiftAction({
+        shiftType,
+        managerName: managerName.trim(),
+      });
       if (!result.success) {
-        setError(result.error)
+        setError(result.error);
       } else {
-        setShowForm(false)
-        setManagerName("")
-        router.refresh()
+        setShowForm(false);
+        setManagerName("");
+        router.refresh();
       }
-    })
+    });
   }
 
   function handleClose() {
-    if (!openShift) return
+    if (!openShift) return;
     startTransition(async () => {
-      const result = await closeShiftAction(openShift.id)
+      const result = await closeShiftAction(openShift.id);
       if (!result.success) {
-        setError(result.error)
+        setError(result.error);
       } else {
-        setShowCloseConfirm(false)
-        router.refresh()
+        setShowCloseConfirm(false);
+        router.refresh();
       }
-    })
+    });
   }
 
   return (
@@ -95,7 +108,9 @@ export function ShiftControls({ openShift }: Props) {
               <div className="flex items-center gap-4">
                 <div className="size-3 shrink-0 rounded-full bg-stone-300" />
                 <div>
-                  <p className="text-base font-semibold text-stone-500">Sin turno activo</p>
+                  <p className="text-base font-semibold text-stone-500">
+                    Sin turno activo
+                  </p>
                   <p className="mt-0.5 text-sm text-stone-400">
                     No se pueden registrar ventas ni gastos
                   </p>
@@ -116,14 +131,18 @@ export function ShiftControls({ openShift }: Props) {
         {/* Formulario de apertura */}
         {showForm && !openShift && (
           <div className="border-t border-stone-100 bg-amber-50/50 px-6 py-5">
-            <p className="mb-4 text-sm font-medium text-stone-700">Datos del nuevo turno</p>
+            <p className="mb-4 text-sm font-medium text-stone-700">
+              Datos del nuevo turno
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="form-label">Tipo de turno</label>
                 <select
                   className="form-select"
                   value={shiftType}
-                  onChange={(e) => setShiftType(e.target.value as "morning" | "afternoon")}
+                  onChange={(e) =>
+                    setShiftType(e.target.value as "morning" | "afternoon")
+                  }
                 >
                   <option value="morning">Turno Mañana</option>
                   <option value="afternoon">Turno Tarde</option>
@@ -151,12 +170,19 @@ export function ShiftControls({ openShift }: Props) {
             )}
 
             <div className="mt-4 flex gap-3">
-              <button className="btn-primary" onClick={handleOpen} disabled={isPending}>
+              <button
+                className="btn-primary"
+                onClick={handleOpen}
+                disabled={isPending}
+              >
                 {isPending ? "Iniciando..." : "Confirmar apertura"}
               </button>
               <button
                 className="btn-secondary"
-                onClick={() => { setShowForm(false); setError(null) }}
+                onClick={() => {
+                  setShowForm(false);
+                  setError(null);
+                }}
               >
                 Cancelar
               </button>
@@ -172,11 +198,15 @@ export function ShiftControls({ openShift }: Props) {
             <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-100">
               <Square className="size-5 text-red-600" />
             </div>
-            <h2 className="text-lg font-semibold text-stone-900">¿Cerrar el turno?</h2>
+            <h2 className="text-lg font-semibold text-stone-900">
+              ¿Cerrar el turno?
+            </h2>
             <p className="mt-1.5 text-sm text-stone-500">
               Se registrará el cierre de{" "}
-              <strong>{openShift && shiftTypeLabel(openShift.shiftType)}</strong>.
-              No se podrán registrar ventas ni gastos hasta iniciar uno nuevo.
+              <strong>
+                {openShift && shiftTypeLabel(openShift.shiftType)}
+              </strong>
+              . No se podrán registrar ventas ni gastos hasta iniciar uno nuevo.
             </p>
 
             {error && (
@@ -196,7 +226,10 @@ export function ShiftControls({ openShift }: Props) {
               </button>
               <button
                 className="btn-secondary flex-1"
-                onClick={() => { setShowCloseConfirm(false); setError(null) }}
+                onClick={() => {
+                  setShowCloseConfirm(false);
+                  setError(null);
+                }}
               >
                 Cancelar
               </button>
@@ -205,5 +238,5 @@ export function ShiftControls({ openShift }: Props) {
         </div>
       )}
     </>
-  )
+  );
 }

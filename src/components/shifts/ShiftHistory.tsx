@@ -82,16 +82,27 @@ export function ShiftHistory({ shifts, totals }: Props) {
                       {shift.status === "open" ? "● Abierto" : "Cerrado"}
                     </span>
                   </td>
-                  <td className="text-right tabular-nums text-sm font-medium text-amber-700">
-                    {t ? formatCurrency(t.totalSales) : "—"}
+
+                  <td className="text-right tabular-nums text-sm font-medium">
+                    <span className="text-green-600">
+                      {t ? formatCurrency(t.totalSales) : "—"}
+                    </span>
                   </td>
-                  <td className="text-right tabular-nums text-sm font-medium text-red-600">
-                    {t ? formatCurrency(t.totalExpenses) : "—"}
+                  <td className="text-right tabular-nums text-sm font-medium">
+                    <span className="text-red-600">
+                      {t ? formatCurrency(t.totalExpenses) : "—"}
+                    </span>
                   </td>
                   <td
-                    className={`text-right tabular-nums text-sm font-semibold ${balance >= 0 ? "text-green-700" : "text-red-700"}`}
+                    className={"text-right tabular-nums text-sm font-semibold"}
                   >
-                    {t ? formatCurrency(balance) : "—"}
+                    <span
+                      className={
+                        balance >= 0 ? "text-green-600" : "text-red-600"
+                      }
+                    >
+                      {t ? formatCurrency(balance) : "—"}
+                    </span>
                   </td>
                 </tr>
               );
