@@ -23,7 +23,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "transferencia", label: "Transf." },
 ];
 
-export function NewExpenseForm() {
+export function NuevoGastoForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,6 @@ export function NewExpenseForm() {
   function handleSubmit() {
     setError(null);
     const amt = parseFloat(amount);
-
     startTransition(async () => {
       const result = await createExpenseAction({
         description: description.trim(),
@@ -54,7 +53,7 @@ export function NewExpenseForm() {
       } else {
         setSuccess(true);
         setTimeout(() => {
-          router.push("/gastos");
+          router.push("/movimientos");
           router.refresh();
         }, 900);
       }
@@ -218,7 +217,7 @@ export function NewExpenseForm() {
           </button>
           <button
             className="btn-secondary"
-            onClick={() => router.push("/gastos")}
+            onClick={() => router.push("/movimientos")}
             disabled={isPending}
           >
             Cancelar

@@ -1,30 +1,28 @@
 import type {
   ExpenseCategory,
   PaymentMethod,
-  ShiftType,
-} from "./database.types";
+} from "@/src/types/database.types";
 
 export interface Expense {
   id: string;
   shiftId: string;
-  managerName: string;
   description: string;
   amount: number;
   category: ExpenseCategory;
   paymentMethod: PaymentMethod;
   notes: string | null;
   receiptUrl: string | null;
+  managerName: string;
   cancelled: boolean;
   cancellationReason: string | null;
-  cancelledAt: Date | null;
+  cancelledAt: string | null;
   cancelledBy: string | null;
-  createdAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ExpenseWithShift extends Expense {
-  shiftType: ShiftType;
-  expenseDate: string;
-}
+// Expense con los datos del turno ya resueltos (se usa en tablas e historial)
+export type ExpenseWithShift = Expense;
 
 export interface CreateExpenseInput {
   description: string;
@@ -41,11 +39,8 @@ export interface CancelExpenseInput {
   cancelledBy: string;
 }
 
-export interface ExpenseFilters {
-  shiftId?: string;
-  category?: ExpenseCategory;
-  paymentMethod?: PaymentMethod;
-  dateFrom?: Date;
-  dateTo?: Date;
-  cancelled?: boolean;
+// Resumen de gastos del turno activo — usado en stat cards de /movimientos
+export interface ShiftExpensesSummary {
+  totalAmount: number;
+  byCategory: Record<string, number>;
 }

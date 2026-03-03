@@ -1,9 +1,8 @@
-import type { PriceType, PaymentMethod, ShiftType } from "./database.types";
+import type { PriceType, PaymentMethod } from "@/src/types/database.types";
 
 export interface Sale {
   id: string;
   shiftId: string;
-  managerName: string;
   productId: string | null;
   productName: string;
   quantity: number;
@@ -12,17 +11,17 @@ export interface Sale {
   discount: number;
   total: number;
   paymentMethod: PaymentMethod;
+  managerName: string;
   cancelled: boolean;
   cancellationReason: string | null;
-  cancelledAt: Date | null;
+  cancelledAt: string | null;
   cancelledBy: string | null;
-  createdAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface SaleWithShift extends Sale {
-  shiftType: ShiftType;
-  saleDate: string;
-}
+// Sale con los datos del turno ya resueltos (se usa en tablas e historial)
+export type SaleWithShift = Sale;
 
 export interface CreateSaleInput {
   productId?: string;
@@ -30,7 +29,7 @@ export interface CreateSaleInput {
   quantity: number;
   unitPrice: number;
   priceType: PriceType;
-  discount: number;
+  discount?: number;
   paymentMethod: PaymentMethod;
 }
 
@@ -40,10 +39,9 @@ export interface CancelSaleInput {
   cancelledBy: string;
 }
 
-export interface SaleFilters {
-  shiftId?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  paymentMethod?: PaymentMethod;
-  cancelled?: boolean;
+// Resumen de ventas del turno activo — usado en stat cards de /movimientos
+export interface ShiftSalesSummary {
+  totalAmount: number;
+  totalTransactions: number;
+  byPaymentMethod: Record<string, number>;
 }

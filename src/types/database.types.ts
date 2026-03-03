@@ -8,12 +8,12 @@ export type ShiftStatus = "open" | "closed";
 export type PriceType = "publico" | "negocio" | "repartidor";
 export type PaymentMethod = "efectivo" | "debito" | "credito" | "transferencia";
 export type ExpenseCategory =
-  | "materia_prima"
+  | "insumos"
   | "servicios"
   | "mantenimiento"
-  | "sueldos"
-  | "insumos"
-  | "otro";
+  | "personal"
+  | "impuestos"
+  | "otros";
 export type EmployeeRole = "ayudante" | "maestro" | "hornero" | "pastelero";
 export type StockMovementType = "entrada" | "salida" | "ajuste";
 

@@ -1,4 +1,4 @@
-import type { PriceType } from "./database.types";
+import type { PriceType } from "@/src/types/database.types";
 
 export interface Product {
   id: string;
@@ -11,22 +11,21 @@ export interface Product {
   active: boolean;
 }
 
-export interface CreateProductInput {
-  name: string;
-  description?: string;
-  basePrice: number;
-  priceNegocio?: number;
-  priceRepartidor?: number;
-}
-
-// Resuelve el precio correcto según tipo
+/**
+ * Devuelve el precio correcto según el tipo seleccionado.
+ * Si no existe precio especial, cae al precio base.
+ */
 export function resolvePriceForType(
   product: Product,
   priceType: PriceType,
 ): number {
-  if (priceType === "negocio" && product.priceNegocio !== null)
-    return product.priceNegocio;
-  if (priceType === "repartidor" && product.priceRepartidor !== null)
-    return product.priceRepartidor;
-  return product.basePrice;
+  switch (priceType) {
+    case "negocio":
+      return product.priceNegocio ?? product.basePrice;
+    case "repartidor":
+      return product.priceRepartidor ?? product.basePrice;
+    case "publico":
+    default:
+      return product.basePrice;
+  }
 }

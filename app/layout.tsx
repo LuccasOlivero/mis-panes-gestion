@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
 import "./globals.css";
-import { Sidebar } from "@/src/components/shared/Sidebar";
+
 import { ShiftStatusBadge } from "@/src/components/shifts/ShiftStatusBadge";
+import { Sidebar } from "@/src/components/shared/Sidebar";
+
+import { Suspense } from "react";
+
+import { Geist, Geist_Mono } from "next/font/google";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -15,11 +17,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
 });
 
-export const metadata: Metadata = {
-  title: "Panteca",
-  description: "Sistema de gestión interno",
-};
-
 /**
  * layout.tsx es Server Component → puede renderizar ShiftStatusBadge (async Server Component).
  * Se pasa como prop al Sidebar (Client Component) usando el patrón "children como slot".
@@ -27,6 +24,7 @@ export const metadata: Metadata = {
  *
  * Suspense es obligatorio porque ShiftStatusBadge hace un fetch asíncrono.
  */
+
 export default function RootLayout({
   children,
 }: {

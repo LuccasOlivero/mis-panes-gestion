@@ -1,3 +1,4 @@
+import { getShiftsTotalsAction } from "@/src/actions/shift-totals.actions";
 import {
   getOpenShiftAction,
   getShiftsAction,
@@ -6,10 +7,6 @@ import { ShiftControls } from "@/src/components/shifts/ShiftControls";
 import { ShiftHistory } from "@/src/components/shifts/ShiftHistory";
 import { Clock } from "lucide-react";
 
-/**
- * Next.js 15: esta página NO tiene parámetros dinámicos ([slug], etc.)
- * por lo que no necesita await en props. Solo aplica a rutas dinámicas.
- */
 export default async function TurnosPage() {
   const [openResult, historyResult] = await Promise.all([
     getOpenShiftAction(),
@@ -18,6 +15,11 @@ export default async function TurnosPage() {
 
   const openShift = openResult.success ? openResult.data : null;
   const shifts = historyResult.success ? historyResult.data : [];
+
+  // Con los IDs de los turnos, traemos los totales de ventas y gastos
+  const shiftIds = shifts.map((s) => s.id);
+  const totalsResult = await getShiftsTotalsAction(shiftIds);
+  const totals = totalsResult.success ? totalsResult.data : [];
 
   return (
     <div>
@@ -35,7 +37,7 @@ export default async function TurnosPage() {
 
       <div className="page-content">
         <ShiftControls openShift={openShift} />
-        <ShiftHistory shifts={shifts} />
+        <ShiftHistory shifts={shifts} totals={totals} />
       </div>
     </div>
   );

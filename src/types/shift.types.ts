@@ -1,20 +1,21 @@
-import type { ShiftType, ShiftStatus } from "./database.types";
+import type { ShiftType, ShiftStatus } from "@/src/types/database.types";
 
 export interface Shift {
   id: string;
   shiftType: ShiftType;
   managerName: string;
-  startedAt: Date;
-  endedAt: Date | null;
+  startedAt: string;
+  endedAt: string | null;
   status: ShiftStatus;
-  createdAt: Date;
+  createdAt: string;
 }
 
 export interface OpenShiftSummary {
   id: string;
   shiftType: ShiftType;
   managerName: string;
-  startedAt: Date;
+  startedAt: string;
+  status: ShiftStatus;
 }
 
 export interface OpenShiftInput {

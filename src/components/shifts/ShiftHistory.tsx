@@ -1,12 +1,17 @@
 import type { Shift } from "@/src/types/shift.types";
 import { shiftTypeLabel } from "@/src/modules/shifts/domain/shift.entity";
 import { formatDateTime } from "@/src/lib/utils/dates";
+import { formatCurrency } from "@/src/lib/utils/currency";
+import { ShiftTotals } from "@/src/actions/shift-totals.actions";
 
 interface Props {
   shifts: Shift[];
+  totals: ShiftTotals[];
 }
 
-export function ShiftHistory({ shifts }: Props) {
+export function ShiftHistory({ shifts, totals }: Props) {
+  const totalsMap = Object.fromEntries(totals.map((t) => [t.shiftId, t]));
+
   if (shifts.length === 0) {
     return (
       <div className="card">
@@ -39,40 +44,58 @@ export function ShiftHistory({ shifts }: Props) {
               <th>Apertura</th>
               <th>Cierre</th>
               <th>Estado</th>
+              <th className="text-right">Ventas</th>
+              <th className="text-right">Gastos</th>
+              <th className="text-right">Balance</th>
             </tr>
           </thead>
           <tbody>
-            {shifts.map((shift) => (
-              <tr key={shift.id}>
-                <td>
-                  <span
-                    className={
-                      shift.shiftType === "morning"
-                        ? "badge-morning"
-                        : "badge-afternoon"
-                    }
+            {shifts.map((shift) => {
+              const t = totalsMap[shift.id];
+              const balance = t?.netBalance ?? 0;
+              return (
+                <tr key={shift.id}>
+                  <td>
+                    <span
+                      className={
+                        shift.shiftType === "morning"
+                          ? "badge-morning"
+                          : "badge-afternoon"
+                      }
+                    >
+                      {shiftTypeLabel(shift.shiftType)}
+                    </span>
+                  </td>
+                  <td className="font-medium">{shift.managerName}</td>
+                  <td className="tabular-nums text-sm text-stone-500">
+                    {formatDateTime(shift.startedAt)}
+                  </td>
+                  <td className="tabular-nums text-sm text-stone-500">
+                    {shift.endedAt ? formatDateTime(shift.endedAt) : "—"}
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        shift.status === "open" ? "badge-open" : "badge-closed"
+                      }
+                    >
+                      {shift.status === "open" ? "● Abierto" : "Cerrado"}
+                    </span>
+                  </td>
+                  <td className="text-right tabular-nums text-sm font-medium text-amber-700">
+                    {t ? formatCurrency(t.totalSales) : "—"}
+                  </td>
+                  <td className="text-right tabular-nums text-sm font-medium text-red-600">
+                    {t ? formatCurrency(t.totalExpenses) : "—"}
+                  </td>
+                  <td
+                    className={`text-right tabular-nums text-sm font-semibold ${balance >= 0 ? "text-green-700" : "text-red-700"}`}
                   >
-                    {shiftTypeLabel(shift.shiftType)}
-                  </span>
-                </td>
-                <td className="font-medium">{shift.managerName}</td>
-                <td className="tabular-nums text-sm text-stone-500">
-                  {formatDateTime(shift.startedAt)}
-                </td>
-                <td className="tabular-nums text-sm text-stone-500">
-                  {shift.endedAt ? formatDateTime(shift.endedAt) : "—"}
-                </td>
-                <td>
-                  <span
-                    className={
-                      shift.status === "open" ? "badge-open" : "badge-closed"
-                    }
-                  >
-                    {shift.status === "open" ? "● Abierto" : "Cerrado"}
-                  </span>
-                </td>
-              </tr>
-            ))}
+                    {t ? formatCurrency(balance) : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

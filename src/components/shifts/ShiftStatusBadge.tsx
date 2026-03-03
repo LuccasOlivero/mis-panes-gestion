@@ -1,17 +1,16 @@
-import { getOpenShiftAction } from "@/src/actions/shift.actions";
-import { shiftTypeLabel } from "@/src/modules/shifts/domain/shift.entity";
-import { formatTime } from "@/src/lib/utils/dates";
-import { Circle } from "lucide-react";
+import { getOpenShiftAction } from "@/src/actions/shift.actions"
+import { shiftTypeLabel } from "@/src/modules/shifts/domain/shift.entity"
+import { formatTime } from "@/src/lib/utils/dates"
+import { Circle } from "lucide-react"
 
 /**
  * Server Component asíncrono.
  * Se renderiza en servidor con datos frescos en cada request.
  * No tiene params ni searchParams — no aplica el cambio de Next.js 15.
  */
-
 export async function ShiftStatusBadge() {
-  const result = await getOpenShiftAction();
-  const shift = result.success ? result.data : null;
+  const result = await getOpenShiftAction()
+  const shift = result.success ? result.data : null
 
   if (!shift) {
     return (
@@ -19,7 +18,7 @@ export async function ShiftStatusBadge() {
         <Circle className="size-2.5 fill-stone-300 text-stone-300" />
         <span className="text-xs text-stone-400">Sin turno activo</span>
       </div>
-    );
+    )
   }
 
   return (
@@ -34,5 +33,5 @@ export async function ShiftStatusBadge() {
         </p>
       </div>
     </div>
-  );
+  )
 }

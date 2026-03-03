@@ -3,8 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createSaleAction } from "@/src/actions/sale.actions";
-import type { DbProduct } from "@/src/types/database.types";
-import type { PriceType, PaymentMethod } from "@/src/types/database.types";
+import type {
+  DbProduct,
+  PriceType,
+  PaymentMethod,
+} from "@/src/types/database.types";
 import { resolvePriceForType } from "@/src/types/product.types";
 import { calculateSaleTotal, formatCurrency } from "@/src/lib/utils/currency";
 import { AlertCircle, CheckCircle2, Search } from "lucide-react";
@@ -26,7 +29,7 @@ interface Props {
   products: DbProduct[];
 }
 
-export function NewSaleForm({ products }: Props) {
+export function NuevaVentaForm({ products }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +122,7 @@ export function NewSaleForm({ products }: Props) {
       } else {
         setSuccess(true);
         setTimeout(() => {
-          router.push("/ventas");
+          router.push("/movimientos");
           router.refresh();
         }, 900);
       }
@@ -286,7 +289,7 @@ export function NewSaleForm({ products }: Props) {
           </div>
         </div>
 
-        {/* Total calculado */}
+        {/* Total */}
         <div className="flex items-center justify-between rounded-xl border border-stone-100 bg-stone-50 p-4">
           <span className="text-sm font-medium text-stone-600">
             Total a cobrar
@@ -315,7 +318,7 @@ export function NewSaleForm({ products }: Props) {
           </button>
           <button
             className="btn-secondary"
-            onClick={() => router.push("/ventas")}
+            onClick={() => router.push("/movimientos")}
             disabled={isPending}
           >
             Cancelar

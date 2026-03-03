@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Clock,
   ShoppingCart,
-  TrendingDown,
   ChefHat,
   Users,
   Croissant,
@@ -16,8 +15,7 @@ import { cn } from "@/src/lib/utils/cn";
 
 const NAV = [
   { href: "/turnos", label: "Turnos", icon: Clock },
-  { href: "/ventas", label: "Ventas", icon: ShoppingCart },
-  { href: "/gastos", label: "Gastos", icon: TrendingDown },
+  { href: "/movimientos", label: "Movimientos", icon: ShoppingCart },
   { href: "/produccion", label: "Producción", icon: ChefHat },
   { href: "/empleados", label: "Empleados", icon: Users },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,6 +27,7 @@ interface Props {
    * y se pasa como prop para evitar llamar un Server Component
    * async desde dentro de un Client Component.
    */
+
   shiftBadge: ReactNode;
 }
 
