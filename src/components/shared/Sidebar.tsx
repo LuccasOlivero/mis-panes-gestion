@@ -18,7 +18,7 @@ const NAV = [
   { href: "/movimientos", label: "Movimientos", icon: ShoppingCart },
   { href: "/produccion", label: "Producción", icon: ChefHat },
   { href: "/empleados", label: "Empleados", icon: Users },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Graficos", icon: LayoutDashboard },
 ];
 
 interface Props {
