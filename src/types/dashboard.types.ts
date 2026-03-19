@@ -1,85 +1,66 @@
-// ─── Períodos disponibles ─────────────────────────────────────────────────────
-
 export type DashboardPeriod = "today" | "week" | "month" | "custom"
 
 export interface DateRange {
-  from: string  // ISO date "2026-02-01"
-  to:   string  // ISO date "2026-02-28"
+  from: string  // "2026-03-01"
+  to:   string  // "2026-03-31"
 }
 
-// ─── Punto de un gráfico de línea/barra ──────────────────────────────────────
+// ─── KPIs ─────────────────────────────────────────────────────────────────────
 
-export interface DailyPoint {
-  date:     string   // "01/02", "02/02", etc. — label para el eje X
-  ventas:   number
-  gastos:   number
-  balance:  number
+export interface DashboardKPIs {
+  // Ventas
+  totalSales:      number   // turnos + reparto
+  shiftSales:      number   // solo turnos
+  deliverySales:   number   // solo reparto
+
+  // Gastos
+  totalExpenses:   number   // turnos + reparto
+  shiftExpenses:   number
+  deliveryExpenses: number
+
+  // Balance
+  netBalance:      number   // totalSales - totalExpenses
 }
 
-// ─── KPIs del período ─────────────────────────────────────────────────────────
+// ─── Tortas ───────────────────────────────────────────────────────────────────
 
-export interface PeriodKPIs {
-  totalVentas:      number
-  totalGastos:      number
-  balanceNeto:      number
-  ticketPromedio:   number
-  cantVentas:       number
-  cantGastos:       number
+export interface PieSlice {
+  name:  string
+  value: number
+  color: string
 }
 
-// ─── Comparación período actual vs anterior ───────────────────────────────────
+// Torta 1: Ventas por fuente (turnos vs reparto)
+export type SalesBySourceData = PieSlice[]
 
-export interface PeriodComparison {
-  ventasDiffPct:   number | null   // null si no hay datos del período anterior
-  gastosDiffPct:   number | null
-  balanceDiffPct:  number | null
-}
+// Torta 2: Ventas por turno (mañana vs tarde)
+export type SalesByShiftTypeData = PieSlice[]
 
-// ─── Distribución por medio de pago ──────────────────────────────────────────
+// Torta 3: Gastos por fuente (turnos vs reparto)
+export type ExpensesBySourceData = PieSlice[]
 
-export interface PaymentMethodSlice {
-  method: string
-  amount: number
-  pct:    number
-}
+// ─── Tabla de turnos ──────────────────────────────────────────────────────────
 
-// ─── Resumen por turno (tabla) ────────────────────────────────────────────────
-
-export interface ShiftSummaryRow {
+export interface ShiftRow {
   shiftId:     string
   shiftType:   "morning" | "afternoon"
   managerName: string
   startedAt:   string
   endedAt:     string | null
-  ventas:      number
-  gastos:      number
+  sales:       number
+  expenses:    number
   balance:     number
-  cantVentas:  number
+  salesCount:  number
 }
 
-// ─── Movimiento individual (detalle expandible) ───────────────────────────────
-
-export interface MovimientoRow {
-  id:          string
-  kind:        "sale" | "expense"
-  description: string
-  amount:      number
-  category:    string   // priceType para ventas, category para gastos
-  payment:     string
-  shiftId:     string
-  createdAt:   string
-  cancelled:   boolean
-}
-
-// ─── Payload completo que devuelve getDashboardDataAction ────────────────────
+// ─── Payload completo ─────────────────────────────────────────────────────────
 
 export interface DashboardData {
-  period:       DateRange
-  prevPeriod:   DateRange
-  kpis:         PeriodKPIs
-  comparison:   PeriodComparison
-  dailyPoints:  DailyPoint[]
-  paymentDist:  PaymentMethodSlice[]
-  shiftRows:    ShiftSummaryRow[]
-  movimientos:  MovimientoRow[]
+  period:          DashboardPeriod
+  dateRange:       DateRange
+  kpis:            DashboardKPIs
+  salesBySource:    SalesBySourceData
+  salesByShiftType: SalesByShiftTypeData
+  expensesBySource: ExpensesBySourceData
+  shifts:          ShiftRow[]
 }

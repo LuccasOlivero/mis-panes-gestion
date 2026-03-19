@@ -1,93 +1,66 @@
-"use client";
+"use client"
 
-import { useState, useTransition, useCallback } from "react";
-import { getDashboardDataAction } from "@/src/actions/dashboard.actions";
-import type {
-  DashboardData,
-  DashboardPeriod,
-  DateRange,
-} from "@/src/types/dashboard.types";
-import { PeriodSelector } from "@/src/components/dashboard/PeriodSelector";
-import { KpiCards } from "@/src/components/dashboard/KpiCards";
-import { MainChart } from "@/src/components/dashboard/MainChart";
-import { ShiftsTable } from "@/src/components/dashboard/ShiftsTable";
-import { AlertCircle } from "lucide-react";
+import { useState, useTransition } from "react"
+import { getDashboardDataAction } from "@/src/actions/dashboard.actions"
+import type { DashboardData, DashboardPeriod, DateRange } from "@/src/types/dashboard.types"
+import { KpiCards }       from "./KpiCards"
+import { PieCharts }      from "./PieCharts"
+import { ShiftsTable }    from "./ShiftsTable"
+import { PeriodSelector } from "./PeriodSelector"
+import { Loader2 }        from "lucide-react"
 
-interface Props {
-  initialData: DashboardData;
-  initialPeriod: DashboardPeriod;
-}
+interface Props { initialData: DashboardData }
 
-export function DashboardClient({ initialData, initialPeriod }: Props) {
-  const [isPending, startTransition] = useTransition();
-  const [period, setPeriod] = useState<DashboardPeriod>(initialPeriod);
-  const [custom, setCustom] = useState<DateRange | undefined>(undefined);
-  const [data, setData] = useState<DashboardData>(initialData);
-  const [error, setError] = useState<string | null>(null);
+export function DashboardClient({ initialData }: Props) {
+  const [data,        setData]        = useState(initialData)
+  const [period,      setPeriod]      = useState<DashboardPeriod>(initialData.period)
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined)
+  const [isPending,   startTransition] = useTransition()
 
-  const handlePeriodChange = useCallback(
-    (newPeriod: DashboardPeriod, newCustom?: DateRange) => {
-      // Para rango custom, esperar a que ambas fechas estén definidas
-      if (newPeriod === "custom") {
-        setPeriod(newPeriod);
-        setCustom(newCustom);
-        if (!newCustom?.from || !newCustom?.to) return;
-      } else {
-        setPeriod(newPeriod);
-        setCustom(undefined);
-      }
+  function handlePeriodChange(newPeriod: DashboardPeriod, custom?: DateRange) {
+    setPeriod(newPeriod)
+    if (custom) setCustomRange(custom)
 
-      setError(null);
-      startTransition(async () => {
-        const result = await getDashboardDataAction(newPeriod, newCustom);
-        if (!result.success) {
-          setError(result.error);
-        } else {
-          setData(result.data);
-        }
-      });
-    },
-    [],
-  );
+    // Solo hacer fetch si hay rango válido en custom
+    if (newPeriod === "custom" && (!custom?.from || !custom?.to)) return
+
+    startTransition(async () => {
+      const result = await getDashboardDataAction(newPeriod, custom)
+      if (result.success) setData(result.data)
+    })
+  }
 
   return (
     <div className="space-y-6">
+
       {/* Selector de período */}
-      <PeriodSelector
-        period={period}
-        custom={custom}
-        onChange={handlePeriodChange}
-        isLoading={isPending}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <PeriodSelector
+          period={period}
+          customRange={customRange}
+          onPeriodChange={handlePeriodChange}
+        />
+        {isPending && (
+          <div className="flex items-center gap-2 text-sm text-stone-400">
+            <Loader2 className="size-4 animate-spin" />
+            Actualizando...
+          </div>
+        )}
+      </div>
+
+      {/* KPIs */}
+      <KpiCards kpis={data.kpis} />
+
+      {/* Tortas */}
+      <PieCharts
+        salesBySource={data.salesBySource}
+        salesByShiftType={data.salesByShiftType}
+        expensesBySource={data.expensesBySource}
       />
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-          <AlertCircle className="size-5 shrink-0 text-red-600" />
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
+      {/* Tabla de turnos */}
+      <ShiftsTable shifts={data.shifts} />
 
-      {/* Contenido con overlay de carga */}
-      <div
-        className={`space-y-6 transition-opacity duration-200 ${isPending ? "opacity-50 pointer-events-none" : "opacity-100"}`}
-      >
-        {/* KPIs */}
-        <KpiCards kpis={data.kpis} comparison={data.comparison} />
-
-        {/* Gráfico principal + comentario comparativo */}
-        <MainChart
-          points={data.dailyPoints}
-          comparison={data.comparison}
-          period={period}
-        />
-
-        {/* Tabla de turnos con detalle expandible */}
-        <ShiftsTable
-          shiftRows={data.shiftRows}
-          movimientos={data.movimientos}
-        />
-      </div>
     </div>
-  );
+  )
 }

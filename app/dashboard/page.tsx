@@ -1,13 +1,20 @@
-import { getDashboardDataAction } from "@/src/actions/dashboard.actions";
-import { DashboardClient } from "@/src/components/dashboard/DashboardClient";
-import { LayoutDashboard } from "lucide-react";
+import { getDashboardDataAction } from "@/src/actions/dashboard.actions"
+import { DashboardClient }        from "@/src/components/dashboard/DashboardClient"
+import { LayoutDashboard }        from "lucide-react"
 
-/**
- * Período por defecto: último mes (opción 4).
- * El Client Component maneja los cambios de período sin recargar la página.
- */
 export default async function DashboardPage() {
-  const result = await getDashboardDataAction("month");
+  const result = await getDashboardDataAction("month")
+
+  // Fallback vacío si falla el fetch
+  const data = result.success ? result.data : {
+    period:          "month" as const,
+    dateRange:       { from: "", to: "" },
+    kpis:            { totalSales: 0, shiftSales: 0, deliverySales: 0, totalExpenses: 0, shiftExpenses: 0, deliveryExpenses: 0, netBalance: 0 },
+    salesBySource:   [],
+    salesByShiftType:[],
+    expensesBySource:[],
+    shifts:          [],
+  }
 
   return (
     <div>
@@ -15,21 +22,14 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-3">
           <LayoutDashboard className="size-5 text-stone-400" />
           <div>
-            <h1 className="page-title">Graficos</h1>
-            <p className="page-subtitle">Resumen financiero por período</p>
+            <h1 className="page-title">Dashboard</h1>
+            <p className="page-subtitle">Resumen del negocio</p>
           </div>
         </div>
       </div>
-
       <div className="page-content">
-        {result.success ? (
-          <DashboardClient initialData={result.data} initialPeriod="month" />
-        ) : (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-            Error al cargar el dashboard: {result.error}
-          </div>
-        )}
+        <DashboardClient initialData={data} />
       </div>
     </div>
-  );
+  )
 }

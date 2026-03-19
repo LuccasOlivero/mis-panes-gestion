@@ -1,29 +1,21 @@
-import "./globals.css";
-
-import { ShiftStatusBadge } from "@/src/components/shifts/ShiftStatusBadge";
-import { Sidebar } from "@/src/components/shared/Sidebar";
-
-import { Suspense } from "react";
-
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
+import "./globals.css";
+import { Sidebar } from "@/src/components/shared/Sidebar";
+import { ShiftStatusBadge } from "@/src/components/shifts/ShiftStatusBadge";
+import { OrdersUrgentBanner } from "@/src/components/reparto/OrdersUrgentBanner";
 
-const geist = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist",
-});
-
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
 });
 
-/**
- * layout.tsx es Server Component → puede renderizar ShiftStatusBadge (async Server Component).
- * Se pasa como prop al Sidebar (Client Component) usando el patrón "children como slot".
- * Así el Client Component nunca llama directamente al Server Component.
- *
- * Suspense es obligatorio porque ShiftStatusBadge hace un fetch asíncrono.
- */
+export const metadata: Metadata = {
+  title: "Panteca",
+  description: "Sistema de gestión interno",
+};
 
 export default function RootLayout({
   children,
@@ -41,9 +33,14 @@ export default function RootLayout({
               </Suspense>
             }
           />
-          <main className="ml-64 min-h-screen flex-1 bg-stone-50">
-            {children}
-          </main>
+          {/* Desktop: ml-64 para compensar sidebar fijo. Mobile: sin margen */}
+          <div className="flex min-h-screen flex-1 flex-col bg-stone-50 lg:ml-64">
+            <Suspense fallback={null}>
+              <OrdersUrgentBanner />
+            </Suspense>
+            {/* Padding top en mobile para el botón hamburguesa */}
+            <main className="flex-1 pt-14 lg:pt-0">{children}</main>
+          </div>
         </div>
       </body>
     </html>

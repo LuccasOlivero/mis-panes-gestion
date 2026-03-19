@@ -1,95 +1,76 @@
-import type { PeriodKPIs, PeriodComparison } from "@/src/types/dashboard.types";
-import { formatCurrency } from "@/src/lib/utils/currency";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+"use client"
 
-interface Props {
-  kpis: PeriodKPIs;
-  comparison: PeriodComparison;
+import type { DashboardKPIs } from "@/src/types/dashboard.types"
+import { ShoppingBag, Clock, Truck, Wallet } from "lucide-react"
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n)
 }
 
-interface DiffBadgeProps {
-  pct: number | null;
-  invert?: boolean;
-}
+interface Props { kpis: DashboardKPIs }
 
-function DiffBadge({ pct, invert = false }: DiffBadgeProps) {
-  if (pct === null)
-    return <span className="text-xs text-stone-400">Sin datos anteriores</span>;
+export function KpiCards({ kpis }: Props) {
+  const isPositive = kpis.netBalance >= 0
 
-  // invert=true → para gastos, subida es mala (rojo), bajada es buena (verde)
-  const isPositive = invert ? pct < 0 : pct > 0;
-  const isNeutral = pct === 0;
-
-  if (isNeutral) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-stone-400">
-        <Minus className="size-3" />
-        Sin cambios
-      </span>
-    );
-  }
+  const cards = [
+    {
+      label:    "Ventas totales",
+      value:    kpis.totalSales,
+      sub:      `Turnos ${formatCurrency(kpis.shiftSales)} · Reparto ${formatCurrency(kpis.deliverySales)}`,
+      icon:     ShoppingBag,
+      bg:       "bg-amber-50",
+      iconColor:"text-amber-600",
+      valColor: "text-amber-700",
+    },
+    {
+      label:    "Ventas turnos",
+      value:    kpis.shiftSales,
+      sub:      `Gastos: ${formatCurrency(kpis.shiftExpenses)}`,
+      icon:     Clock,
+      bg:       "bg-orange-50",
+      iconColor:"text-orange-500",
+      valColor: "text-orange-700",
+    },
+    {
+      label:    "Ventas reparto",
+      value:    kpis.deliverySales,
+      sub:      `Gastos: ${formatCurrency(kpis.deliveryExpenses)}`,
+      icon:     Truck,
+      bg:       "bg-sky-50",
+      iconColor:"text-sky-500",
+      valColor: "text-sky-700",
+    },
+    {
+      label:    "Balance neto",
+      value:    kpis.netBalance,
+      sub:      `Gastos totales: ${formatCurrency(kpis.totalExpenses)}`,
+      icon:     Wallet,
+      bg:       isPositive ? "bg-green-50"  : "bg-red-50",
+      iconColor:isPositive ? "text-green-600" : "text-red-500",
+      valColor: isPositive ? "text-green-700" : "text-red-600",
+    },
+  ]
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 text-xs font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}
-    >
-      {isPositive ? (
-        <TrendingUp className="size-3" />
-      ) : (
-        <TrendingDown className="size-3" />
-      )}
-      {pct > 0 ? "+" : ""}
-      {pct}% vs período anterior
-    </span>
-  );
-}
-
-export function KpiCards({ kpis, comparison }: Props) {
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {/* Ventas totales */}
-      <div className="stat-card">
-        <span className="stat-label">Ventas totales</span>
-        <span className="stat-value text-amber-700">
-          {formatCurrency(kpis.totalVentas)}
-        </span>
-        <DiffBadge pct={comparison.ventasDiffPct} />
-        <span className="mt-1 text-xs text-stone-400">
-          {kpis.cantVentas} transacciones
-        </span>
-      </div>
-
-      {/* Gastos totales */}
-      <div className="stat-card">
-        <span className="stat-label">Gastos totales</span>
-        <span className="stat-value text-red-600">
-          {formatCurrency(kpis.totalGastos)}
-        </span>
-        <DiffBadge pct={comparison.gastosDiffPct} invert />
-        <span className="mt-1 text-xs text-stone-400">
-          {kpis.cantGastos} egresos
-        </span>
-      </div>
-
-      {/* Balance neto */}
-      <div className="stat-card">
-        <span className="stat-label">Balance neto</span>
-        <span
-          className={`stat-value ${kpis.balanceNeto >= 0 ? "text-green-700" : "text-red-700"}`}
-        >
-          {formatCurrency(kpis.balanceNeto)}
-        </span>
-        <DiffBadge pct={comparison.balanceDiffPct} />
-      </div>
-
-      {/* Ticket promedio */}
-      <div className="stat-card">
-        <span className="stat-label">Ticket promedio</span>
-        <span className="stat-value text-stone-700">
-          {formatCurrency(kpis.ticketPromedio)}
-        </span>
-        <span className="mt-1 text-xs text-stone-400">Por venta</span>
-      </div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map(({ label, value, sub, icon: Icon, bg, iconColor, valColor }) => (
+        <div key={label} className="card">
+          <div className="card-body">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-stone-400">{label}</p>
+                <p className={`mt-2 text-2xl font-bold sm:text-3xl tabular-nums ${valColor}`}>
+                  {formatCurrency(value)}
+                </p>
+                <p className="mt-1.5 text-xs text-stone-400 truncate">{sub}</p>
+              </div>
+              <div className={`ml-3 flex size-10 shrink-0 items-center justify-center rounded-xl ${bg}`}>
+                <Icon className={`size-5 ${iconColor}`} />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
-  );
+  )
 }
