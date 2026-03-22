@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createServerClient } from "@/src/lib/supabase/server"
 import { differenceInDays, format, parseISO } from "date-fns"
 import type {
@@ -51,9 +52,15 @@ function mapNote(r: any): DeliveryNote {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapOrder(r: any): DeliveryOrder {
-  const today    = new Date(); today.setHours(0, 0, 0, 0)
-  const daysLeft = differenceInDays(parseISO(r.delivery_date), today)
+function mapOrder(r: any, today?: string): DeliveryOrder {
+  // Si no se pasa today, calcularlo en zona horaria Argentina
+  const todayStr = today ?? format(
+    new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })),
+    "yyyy-MM-dd"
+  )
+  const todayDate    = parseISO(todayStr)
+  const deliveryDate = parseISO(r.delivery_date)
+  const daysLeft     = differenceInDays(deliveryDate, todayDate)
   return {
     id: r.id, clientName: r.client_name, description: r.description,
     deliveryDate: r.delivery_date, daysLeft,
@@ -152,6 +159,7 @@ export async function createDeliverySaleAction(input: CreateDeliverySaleInput): 
       notes:            input.notes?.trim()   ?? null,
     })
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -161,6 +169,7 @@ export async function deleteDeliverySaleAction(saleId: string): Promise<Ok> {
     const supabase = createServerClient()
     const { error } = await supabase.from("delivery_sales").delete().eq("id", saleId)
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -180,6 +189,7 @@ export async function createDeliveryExpenseAction(input: CreateDeliveryExpenseIn
       total:        input.total,
     })
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -189,6 +199,7 @@ export async function deleteDeliveryExpenseAction(expenseId: string): Promise<Ok
     const supabase = createServerClient()
     const { error } = await supabase.from("delivery_expenses").delete().eq("id", expenseId)
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -211,6 +222,7 @@ export async function createDeliveryNoteAction(input: CreateDeliveryNoteInput): 
     const supabase = createServerClient()
     const { error } = await supabase.from("delivery_notes").insert({ content: input.content.trim() })
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -220,6 +232,7 @@ export async function deleteDeliveryNoteAction(noteId: string): Promise<Ok> {
     const supabase = createServerClient()
     const { error } = await supabase.from("delivery_notes").delete().eq("id", noteId)
     if (error) throw new Error(error.message)
+    revalidatePath("/reparto")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -230,9 +243,20 @@ export async function getDeliveryOrdersAction(): Promise<Result<{
   pending: DeliveryOrder[]; completed: DeliveryOrder[]; urgent: DeliveryOrder[]
 }>> {
   try {
-    const supabase      = createServerClient()
-    const expiredCutoff = format(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
+    const supabase = createServerClient()
 
+    // Fecha de hoy en Argentina (UTC-3) — independiente del servidor
+    const todayAR = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })
+    )
+    const today = format(todayAR, "yyyy-MM-dd")
+
+    // Cutoff: pedidos cuya fecha de entrega fue hace más de 2 días
+    const cutoffDate = new Date(todayAR)
+    cutoffDate.setDate(cutoffDate.getDate() - 2)
+    const expiredCutoff = format(cutoffDate, "yyyy-MM-dd")
+
+    // Auto-completar pedidos vencidos (delivery_date < hoy - 2 días)
     await supabase
       .from("delivery_orders")
       .update({ completed: true, completed_at: new Date().toISOString() })
@@ -243,7 +267,7 @@ export async function getDeliveryOrdersAction(): Promise<Result<{
       .from("delivery_orders").select("*").order("delivery_date", { ascending: true })
     if (error) throw new Error(error.message)
 
-    const orders    = (data ?? []).map(mapOrder)
+    const orders    = (data ?? []).map((r) => mapOrder(r, today))
     const pending   = orders.filter((o) => !o.completed)
     const completed = orders.filter((o) => o.completed)
     const urgent    = pending.filter((o) => o.daysLeft <= 2)
@@ -265,6 +289,7 @@ export async function createDeliveryOrderAction(input: CreateDeliveryOrderInput)
       sale_created:  false,
     })
     if (error) throw new Error(error.message)
+    revalidatePath("/pedidos")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -319,6 +344,7 @@ export async function markOrderDeliveredAction(orderId: string): Promise<Ok> {
       .eq("id", orderId)
 
     if (updateErr) throw new Error(updateErr.message)
+    revalidatePath("/pedidos")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
@@ -328,15 +354,19 @@ export async function deleteDeliveryOrderAction(orderId: string): Promise<Ok> {
     const supabase = createServerClient()
     const { error } = await supabase.from("delivery_orders").delete().eq("id", orderId)
     if (error) throw new Error(error.message)
+    revalidatePath("/pedidos")
     return { success: true }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
 
 export async function getUrgentOrdersAction(): Promise<Result<DeliveryOrder[]>> {
   try {
-    const supabase     = createServerClient()
-    const today        = format(new Date(), "yyyy-MM-dd")
-    const twoDaysAhead = format(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
+    const supabase  = createServerClient()
+    const todayAR   = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })
+    )
+    const today        = format(todayAR, "yyyy-MM-dd")
+    const twoDaysAhead = format(new Date(todayAR.getTime() + 2 * 24 * 60 * 60 * 1000), "yyyy-MM-dd")
     const { data, error } = await supabase
       .from("delivery_orders").select("*")
       .eq("completed", false)
@@ -344,6 +374,6 @@ export async function getUrgentOrdersAction(): Promise<Result<DeliveryOrder[]>> 
       .lte("delivery_date", twoDaysAhead)
       .order("delivery_date", { ascending: true })
     if (error) throw new Error(error.message)
-    return { success: true, data: (data ?? []).map(mapOrder) }
+    return { success: true, data: (data ?? []).map((r) => mapOrder(r, today)) }
   } catch (e) { return { success: false, error: (e as Error).message } }
 }
