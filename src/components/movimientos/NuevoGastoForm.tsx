@@ -8,8 +8,8 @@ import type {
   PaymentMethod,
 } from "@/src/types/database.types";
 import { formatCurrency } from "@/src/lib/utils/currency";
-import { expenseCategoryLabels } from "@/src/modules/expenses/domain/expense.entity";
 import { AlertCircle, CheckCircle2, Paperclip } from "lucide-react";
+import { expenseCategoryLabels } from "@/src/modules/expenses/domain/expense.entity";
 
 const CATEGORIES = Object.entries(expenseCategoryLabels) as [
   ExpenseCategory,
