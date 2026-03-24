@@ -1,19 +1,21 @@
-import Link from "next/link";
-import { getEmployeesAction } from "@/src/actions/employee.actions";
-import { Users, Plus } from "lucide-react";
-import { getTodayShiftsAllAction } from "@/src/actions/employee-shift.actions";
-import { EmployeeListClient } from "@/src/components/empleados/EmployeeListClient";
+export const dynamic = "force-dynamic"
+
+import Link from "next/link"
+import { getEmployeesAction } from "@/src/actions/employee.actions"
+import { getTodayShiftsAllAction } from "@/src/actions/employee-shift.actions"
+import { EmployeeListClient } from "@/src/components/empleados/EmployeeListClient"
+import { Users, Plus } from "lucide-react"
 
 export default async function EmpleadosPage() {
-  const result = await getEmployeesAction();
-  const employees = result.success ? result.data : [];
+  const result = await getEmployeesAction()
+  const employees = result.success ? result.data : []
 
   // Traer fichajes de hoy para todos los empleados en una sola query
-  const ids = employees.map((e) => e.id);
-  const shiftsRes = await getTodayShiftsAllAction(ids);
-  const todayShifts = shiftsRes.success ? shiftsRes.data : {};
+  const ids = employees.map((e) => e.id)
+  const shiftsRes = await getTodayShiftsAllAction(ids)
+  const todayShifts = shiftsRes.success ? shiftsRes.data : {}
 
-  const activos = employees.filter((e) => e.active).length;
+  const activos = employees.filter((e) => e.active).length
 
   return (
     <div>
@@ -36,8 +38,11 @@ export default async function EmpleadosPage() {
       </div>
 
       <div className="page-content">
-        <EmployeeListClient employees={employees} todayShifts={todayShifts} />
+        <EmployeeListClient
+          employees={employees}
+          todayShifts={todayShifts}
+        />
       </div>
     </div>
-  );
+  )
 }

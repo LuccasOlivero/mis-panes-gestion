@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getDeliveryOrdersAction } from "@/src/actions/delivery.actions"
 import { DeliveryOrdersClient } from "@/src/components/reparto/DeliveryOrdersClient"
 import { PackageSearch } from "lucide-react"

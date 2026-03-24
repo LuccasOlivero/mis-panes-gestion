@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { format } from "date-fns"
 import {
   getProductionRecordAction,

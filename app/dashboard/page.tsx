@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getDashboardDataAction } from "@/src/actions/dashboard.actions"
 import { DashboardClient }        from "@/src/components/dashboard/DashboardClient"
 import { LayoutDashboard }        from "lucide-react"
