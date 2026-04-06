@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import {
   createDeliverySaleAction,
   createDeliveryClientAction,
@@ -9,7 +8,12 @@ import {
   createDeliveryExpenseAction,
   deleteDeliveryExpenseAction,
 } from "@/src/actions/delivery.actions"
-import type { DeliveryClient, DailyDeliverySummary } from "@/src/types/delivery.types"
+import type {
+  DeliveryClient,
+  DailyDeliverySummary,
+  DeliverySale,
+  DeliveryExpense,
+} from "@/src/types/delivery.types"
 import { formatCurrency } from "@/src/lib/utils/currency"
 import { formatDateTime } from "@/src/lib/utils/dates"
 import {
@@ -24,43 +28,69 @@ interface Props {
   onDateChange: (date: string) => void
 }
 
-export function DeliveryDayClient({ summary, clients: initialClients, selectedDate, onDateChange }: Props) {
-  const router = useRouter()
+export function DeliveryDayClient({ summary: initialSummary, clients: initialClients, selectedDate, onDateChange }: Props) {
   const [isPending, startTransition] = useTransition()
-  const [clients, setClients] = useState(initialClients)
+
+  // ── Estado local optimista ──────────────────────────────────────────────────
+  const [sales,    setSales]    = useState<DeliverySale[]>(initialSummary.sales)
+  const [expenses, setExpenses] = useState<DeliveryExpense[]>(initialSummary.expenses)
+  const [clients,  setClients]  = useState<DeliveryClient[]>(initialClients)
+
+  // Totales derivados del estado local
+  const totalSales    = sales.reduce((s, r) => s + r.total, 0)
+  const totalExpenses = expenses.reduce((s, r) => s + r.total, 0)
+  const netBalance    = totalSales - totalExpenses
+  const isPositive    = netBalance >= 0
 
   // ── Ventas ──────────────────────────────────────────────────────────────────
-  const [saleMode,        setSaleMode]        = useState<"fixed" | "temp" | null>(null)
-  const [selectedClient,  setSelectedClient]  = useState("")
-  const [tempName,        setTempName]        = useState("")
-  const [saleTotal,       setSaleTotal]       = useState("")
-  const [saleNotes,       setSaleNotes]       = useState("")
-  const [saleError,       setSaleError]       = useState<string | null>(null)
-  const [saleSuccess,     setSaleSuccess]     = useState(false)
-  const [showNewClient,   setShowNewClient]   = useState(false)
-  const [newClientName,   setNewClientName]   = useState("")
-  const [clientError,     setClientError]     = useState<string | null>(null)
+  const [saleMode,       setSaleMode]       = useState<"fixed" | "temp" | null>(null)
+  const [selectedClient, setSelectedClient] = useState("")
+  const [tempName,       setTempName]       = useState("")
+  const [saleTotal,      setSaleTotal]      = useState("")
+  const [saleNotes,      setSaleNotes]      = useState("")
+  const [saleError,      setSaleError]      = useState<string | null>(null)
+  const [showNewClient,  setShowNewClient]  = useState(false)
+  const [newClientName,  setNewClientName]  = useState("")
+  const [clientError,    setClientError]    = useState<string | null>(null)
 
   // ── Gastos ──────────────────────────────────────────────────────────────────
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [expenseName,     setExpenseName]     = useState("")
   const [expenseTotal,    setExpenseTotal]    = useState("")
   const [expenseError,    setExpenseError]    = useState<string | null>(null)
-  const [expenseSuccess,  setExpenseSuccess]  = useState(false)
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function resetSaleForm() {
     setSaleMode(null); setSelectedClient(""); setTempName("")
     setSaleTotal(""); setSaleNotes(""); setSaleError(null)
   }
 
+  // ── Agregar venta — optimista ───────────────────────────────────────────────
   function handleAddSale() {
     setSaleError(null)
     const amt = parseFloat(saleTotal)
-    if (!amt || amt <= 0)                          { setSaleError("Ingresá un total válido."); return }
-    if (saleMode === "fixed" && !selectedClient)   { setSaleError("Seleccioná un cliente."); return }
-    if (saleMode === "temp" && !tempName.trim())   { setSaleError("Escribí el nombre del cliente."); return }
+    if (!amt || amt <= 0)                        { setSaleError("Ingresá un total válido."); return }
+    if (saleMode === "fixed" && !selectedClient) { setSaleError("Seleccioná un cliente."); return }
+    if (saleMode === "temp" && !tempName.trim()) { setSaleError("Escribí el nombre del cliente."); return }
+
+    const clientName = saleMode === "fixed"
+      ? (clients.find((c) => c.id === selectedClient)?.name ?? "Cliente")
+      : tempName.trim()
+
+    // Optimista: agregar inmediatamente con ID temporal
+    const tempId = `temp-${Date.now()}`
+    const optimisticSale: DeliverySale = {
+      id:             tempId,
+      saleDate:       selectedDate,
+      clientId:       saleMode === "fixed" ? selectedClient : null,
+      clientTempName: saleMode === "temp"  ? tempName.trim() : null,
+      clientName,
+      isTemp:         saleMode === "temp",
+      total:          amt,
+      notes:          saleNotes.trim() || null,
+      createdAt:      new Date().toISOString(),
+    }
+    setSales((prev) => [...prev, optimisticSale])
+    resetSaleForm()
 
     startTransition(async () => {
       const result = await createDeliverySaleAction({
@@ -70,13 +100,27 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
         total:          amt,
         notes:          saleNotes.trim() || undefined,
       })
-      if (!result.success) { setSaleError(result.error) } else {
-        setSaleSuccess(true)
-        setTimeout(() => { setSaleSuccess(false); resetSaleForm(); router.refresh() }, 700)
+      if (!result.success) {
+        // Revertir si falla
+        setSales((prev) => prev.filter((s) => s.id !== tempId))
+        setSaleError(result.error)
       }
     })
   }
 
+  // ── Eliminar venta — optimista ──────────────────────────────────────────────
+  function handleDeleteSale(saleId: string) {
+    const prev = sales.find((s) => s.id === saleId)
+    setSales((s) => s.filter((x) => x.id !== saleId))
+    startTransition(async () => {
+      const result = await deleteDeliverySaleAction(saleId)
+      if (!result.success && prev) {
+        setSales((s) => [...s, prev])
+      }
+    })
+  }
+
+  // ── Agregar cliente ─────────────────────────────────────────────────────────
   function handleAddClient() {
     setClientError(null)
     if (!newClientName.trim()) { setClientError("Escribí un nombre."); return }
@@ -89,15 +133,23 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
     })
   }
 
-  function handleDeleteSale(saleId: string) {
-    startTransition(async () => { await deleteDeliverySaleAction(saleId); router.refresh() })
-  }
-
+  // ── Agregar gasto — optimista ───────────────────────────────────────────────
   function handleAddExpense() {
     setExpenseError(null)
     const amt = parseFloat(expenseTotal)
     if (!expenseName.trim()) { setExpenseError("Escribí el nombre del gasto."); return }
     if (!amt || amt <= 0)    { setExpenseError("Ingresá un monto válido."); return }
+
+    const tempId = `temp-${Date.now()}`
+    const optimisticExpense: DeliveryExpense = {
+      id:          tempId,
+      expenseDate: selectedDate,
+      name:        expenseName.trim(),
+      total:       amt,
+      createdAt:   new Date().toISOString(),
+    }
+    setExpenses((prev) => [...prev, optimisticExpense])
+    setExpenseName(""); setExpenseTotal(""); setShowExpenseForm(false)
 
     startTransition(async () => {
       const result = await createDeliveryExpenseAction({
@@ -105,39 +157,40 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
         name:        expenseName.trim(),
         total:       amt,
       })
-      if (!result.success) { setExpenseError(result.error) } else {
-        setExpenseSuccess(true)
-        setTimeout(() => { setExpenseSuccess(false); setExpenseName(""); setExpenseTotal(""); setShowExpenseForm(false); router.refresh() }, 700)
+      if (!result.success) {
+        setExpenses((prev) => prev.filter((e) => e.id !== tempId))
+        setExpenseError(result.error)
       }
     })
   }
 
+  // ── Eliminar gasto — optimista ──────────────────────────────────────────────
   function handleDeleteExpense(expenseId: string) {
-    startTransition(async () => { await deleteDeliveryExpenseAction(expenseId); router.refresh() })
+    const prev = expenses.find((e) => e.id === expenseId)
+    setExpenses((e) => e.filter((x) => x.id !== expenseId))
+    startTransition(async () => {
+      const result = await deleteDeliveryExpenseAction(expenseId)
+      if (!result.success && prev) {
+        setExpenses((e) => [...e, prev])
+      }
+    })
   }
 
   const saleAmt    = parseFloat(saleTotal)    || 0
   const expenseAmt = parseFloat(expenseTotal) || 0
-  const isPositive = summary.netBalance >= 0
 
   return (
     <div className="space-y-6">
 
-      {/* ── Tres stats ────────────────────────────────────────────────────────── */}
+      {/* ── Tres stats ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-
-        {/* Ventas */}
         <div className="card">
           <div className="card-body">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Ventas del día</p>
-                <p className="mt-2 text-4xl font-bold tabular-nums text-amber-700">
-                  {formatCurrency(summary.totalSales)}
-                </p>
-                <p className="mt-1.5 text-xs text-stone-400">
-                  {summary.salesCount} {summary.salesCount === 1 ? "entrega" : "entregas"}
-                </p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700 sm:text-4xl">{formatCurrency(totalSales)}</p>
+                <p className="mt-1.5 text-xs text-stone-400">{sales.length} {sales.length === 1 ? "entrega" : "entregas"}</p>
               </div>
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-50">
                 <Truck className="size-5 text-amber-600" />
@@ -145,19 +198,13 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
             </div>
           </div>
         </div>
-
-        {/* Gastos */}
         <div className="card">
           <div className="card-body">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Gastos del día</p>
-                <p className="mt-2 text-4xl font-bold tabular-nums text-red-600">
-                  {formatCurrency(summary.totalExpenses)}
-                </p>
-                <p className="mt-1.5 text-xs text-stone-400">
-                  {summary.expenses.length} {summary.expenses.length === 1 ? "gasto" : "gastos"}
-                </p>
+                <p className="mt-2 text-3xl font-bold tabular-nums text-red-600 sm:text-4xl">{formatCurrency(totalExpenses)}</p>
+                <p className="mt-1.5 text-xs text-stone-400">{expenses.length} {expenses.length === 1 ? "gasto" : "gastos"}</p>
               </div>
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-red-50">
                 <TrendingDown className="size-5 text-red-500" />
@@ -165,16 +212,12 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
             </div>
           </div>
         </div>
-
-        {/* Ganancia neta */}
         <div className="card">
           <div className="card-body">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Ganancia neta</p>
-                <p className={`mt-2 text-4xl font-bold tabular-nums ${isPositive ? "text-green-700" : "text-red-600"}`}>
-                  {formatCurrency(summary.netBalance)}
-                </p>
+                <p className={`mt-2 text-3xl font-bold tabular-nums sm:text-4xl ${isPositive ? "text-green-700" : "text-red-600"}`}>{formatCurrency(netBalance)}</p>
                 <p className="mt-1.5 text-xs text-stone-400">ventas − gastos</p>
               </div>
               <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${isPositive ? "bg-green-50" : "bg-red-50"}`}>
@@ -185,46 +228,30 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
         </div>
       </div>
 
-      {/* ── Selector de fecha ─────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
+      {/* ── Selector de fecha ─────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium text-stone-600">Fecha:</label>
-        <input
-          type="date"
-          className="form-input w-auto"
-          value={selectedDate}
-          onChange={(e) => onDateChange(e.target.value)}
-        />
+        <input type="date" className="form-input w-auto" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} />
       </div>
 
-      {/* ── Tabla de ventas ───────────────────────────────────────────────────── */}
+      {/* ── Tabla de ventas ───────────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-2">
             <Truck className="size-4 text-amber-500" />
             <span className="card-title">Entregas</span>
           </div>
-          <span className="text-xs text-stone-400">{summary.salesCount} registradas</span>
+          <span className="text-xs text-stone-400">{sales.length} registradas</span>
         </div>
-
-        {summary.sales.length === 0 ? (
-          <div className="card-body">
-            <p className="py-5 text-center text-sm text-stone-400">Sin entregas para esta fecha.</p>
-          </div>
+        {sales.length === 0 ? (
+          <div className="card-body"><p className="py-5 text-center text-sm text-stone-400">Sin entregas para esta fecha.</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Notas</th>
-                  <th className="text-right">Total</th>
-                  <th>Hora</th>
-                  <th />
-                </tr>
-              </thead>
+              <thead><tr><th>Cliente</th><th>Notas</th><th className="text-right">Total</th><th>Hora</th><th /></tr></thead>
               <tbody>
-                {summary.sales.map((sale) => (
-                  <tr key={sale.id}>
+                {sales.map((sale) => (
+                  <tr key={sale.id} className={sale.id.startsWith("temp-") ? "opacity-60" : ""}>
                     <td>
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs ${sale.isTemp ? "bg-stone-100 text-stone-500" : "bg-amber-100 text-amber-700"}`}>
@@ -238,7 +265,11 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
                     <td className="text-right tabular-nums font-semibold text-amber-700">{formatCurrency(sale.total)}</td>
                     <td className="tabular-nums text-xs text-stone-400">{formatDateTime(sale.createdAt)}</td>
                     <td>
-                      <button className="btn-ghost btn-sm p-1 text-stone-300 hover:text-red-500" onClick={() => handleDeleteSale(sale.id)} disabled={isPending}>
+                      <button
+                        className="btn-ghost btn-sm p-1 text-stone-300 hover:text-red-500"
+                        onClick={() => handleDeleteSale(sale.id)}
+                        disabled={sale.id.startsWith("temp-")}
+                      >
                         <Trash2 className="size-3.5" />
                       </button>
                     </td>
@@ -248,7 +279,7 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
               <tfoot>
                 <tr className="border-t-2 border-stone-200 bg-amber-50/50">
                   <td colSpan={2} className="px-4 py-3 text-sm font-semibold text-stone-700">Total ventas</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-lg font-bold text-amber-700">{formatCurrency(summary.totalSales)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-lg font-bold text-amber-700">{formatCurrency(totalSales)}</td>
                   <td colSpan={2} />
                 </tr>
               </tfoot>
@@ -257,7 +288,7 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
         )}
       </div>
 
-      {/* ── Tabla de gastos ───────────────────────────────────────────────────── */}
+      {/* ── Tabla de gastos ───────────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-2">
@@ -265,83 +296,53 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
             <span className="card-title">Gastos del reparto</span>
           </div>
           <button className="btn-secondary btn-sm" onClick={() => setShowExpenseForm(!showExpenseForm)}>
-            <Plus className="size-3.5" />
-            Agregar gasto
+            <Plus className="size-3.5" /> Agregar gasto
           </button>
         </div>
 
-        {/* Formulario gasto */}
         {showExpenseForm && (
           <div className="border-b border-stone-100 px-4 py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
                 <label className="form-label">Nombre del gasto</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Ej: Combustible, envases..."
-                  value={expenseName}
-                  onChange={(e) => setExpenseName(e.target.value)}
-                  autoFocus
-                />
+                <input type="text" className="form-input" placeholder="Ej: Combustible, envases..." value={expenseName} onChange={(e) => setExpenseName(e.target.value)} autoFocus />
               </div>
               <div className="w-full sm:w-36">
                 <label className="form-label">Monto</label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
-                  <input
-                    type="number"
-                    className="form-input pl-7"
-                    placeholder="0"
-                    min="0"
-                    value={expenseTotal}
-                    onChange={(e) => setExpenseTotal(e.target.value)}
-                  />
+                  <input type="number" className="form-input pl-7" placeholder="0" min="0" value={expenseTotal} onChange={(e) => setExpenseTotal(e.target.value)} />
                 </div>
               </div>
-              <div className="flex gap-2 pb-0.5">
-                {expenseSuccess
-                  ? <span className="flex items-center gap-1 text-sm text-green-600"><CheckCircle2 className="size-4" /> Guardado</span>
-                  : (
-                    <button className="btn-danger btn-sm" onClick={handleAddExpense} disabled={isPending || expenseAmt <= 0}>
-                      {isPending ? "..." : `Registrar · ${formatCurrency(expenseAmt)}`}
-                    </button>
-                  )
-                }
+              <div className="flex gap-2">
+                <button className="btn-danger btn-sm" onClick={handleAddExpense} disabled={expenseAmt <= 0}>
+                  {`Registrar · ${formatCurrency(expenseAmt)}`}
+                </button>
                 <button className="btn-ghost btn-sm" onClick={() => { setShowExpenseForm(false); setExpenseError(null) }}>✕</button>
               </div>
             </div>
-            {expenseError && (
-              <p className="mt-2 flex items-center gap-2 text-sm text-red-600">
-                <AlertCircle className="size-4 shrink-0" />{expenseError}
-              </p>
-            )}
+            {expenseError && <p className="mt-2 flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{expenseError}</p>}
           </div>
         )}
 
-        {summary.expenses.length === 0 ? (
-          <div className="card-body">
-            <p className="py-5 text-center text-sm text-stone-400">Sin gastos para esta fecha.</p>
-          </div>
+        {expenses.length === 0 ? (
+          <div className="card-body"><p className="py-5 text-center text-sm text-stone-400">Sin gastos para esta fecha.</p></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Concepto</th>
-                  <th>Hora</th>
-                  <th className="text-right">Total</th>
-                  <th />
-                </tr>
-              </thead>
+              <thead><tr><th>Concepto</th><th>Hora</th><th className="text-right">Total</th><th /></tr></thead>
               <tbody>
-                {summary.expenses.map((exp) => (
-                  <tr key={exp.id}>
+                {expenses.map((exp) => (
+                  <tr key={exp.id} className={exp.id.startsWith("temp-") ? "opacity-60" : ""}>
                     <td className="font-medium">{exp.name}</td>
                     <td className="tabular-nums text-xs text-stone-400">{formatDateTime(exp.createdAt)}</td>
                     <td className="text-right tabular-nums font-semibold text-red-600">{formatCurrency(exp.total)}</td>
                     <td>
-                      <button className="btn-ghost btn-sm p-1 text-stone-300 hover:text-red-500" onClick={() => handleDeleteExpense(exp.id)} disabled={isPending}>
+                      <button
+                        className="btn-ghost btn-sm p-1 text-stone-300 hover:text-red-500"
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        disabled={exp.id.startsWith("temp-")}
+                      >
                         <Trash2 className="size-3.5" />
                       </button>
                     </td>
@@ -350,9 +351,9 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-stone-200 bg-red-50/50">
-                  <td colSpan={1} className="px-4 py-3 text-sm font-semibold text-stone-700">Total gastos</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-stone-700">Total gastos</td>
                   <td />
-                  <td className="px-4 py-3 text-right tabular-nums text-lg font-bold text-red-600">{formatCurrency(summary.totalExpenses)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-lg font-bold text-red-600">{formatCurrency(totalExpenses)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -361,22 +362,21 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
         )}
       </div>
 
-      {/* ── Registrar entrega ─────────────────────────────────────────────────── */}
+      {/* ── Registrar entrega ─────────────────────────────────────────────── */}
       <div className="card">
         <div className="card-header">
           <ArrowUpCircle className="size-4 text-amber-600" />
           <span className="card-title">Registrar entrega</span>
         </div>
         <div className="card-body space-y-4">
-
           {!saleMode && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 hover:border-amber-400 hover:bg-amber-50 transition-all" onClick={() => setSaleMode("fixed")}>
+              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-amber-400 hover:bg-amber-50" onClick={() => setSaleMode("fixed")}>
                 <User className="size-6 text-amber-600" />
                 <span className="text-sm font-medium text-stone-700">Cliente fijo</span>
                 <span className="text-xs text-stone-400">Seleccionar de la lista</span>
               </button>
-              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 hover:border-stone-400 hover:bg-stone-50 transition-all" onClick={() => setSaleMode("temp")}>
+              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-stone-400 hover:bg-stone-50" onClick={() => setSaleMode("temp")}>
                 <UserPlus className="size-6 text-stone-500" />
                 <span className="text-sm font-medium text-stone-700">Cliente temporal</span>
                 <span className="text-xs text-stone-400">Sin guardar en lista</span>
@@ -442,14 +442,13 @@ export function DeliveryDayClient({ summary, clients: initialClients, selectedDa
                 </div>
               )}
 
-              {saleSuccess && <div className="flex items-center gap-2 text-sm text-green-600"><CheckCircle2 className="size-4" /> Entrega registrada</div>}
               {saleError && <p className="flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{saleError}</p>}
 
               <div className="flex gap-3">
-                <button className="btn-primary flex-1" onClick={handleAddSale} disabled={isPending || saleAmt <= 0}>
-                  {isPending ? "Registrando..." : `Registrar entrega · ${formatCurrency(saleAmt)}`}
+                <button className="btn-primary flex-1" onClick={handleAddSale} disabled={saleAmt <= 0}>
+                  {`Registrar entrega · ${formatCurrency(saleAmt)}`}
                 </button>
-                <button className="btn-secondary" onClick={resetSaleForm} disabled={isPending}>Cancelar</button>
+                <button className="btn-secondary" onClick={resetSaleForm}>Cancelar</button>
               </div>
             </>
           )}
