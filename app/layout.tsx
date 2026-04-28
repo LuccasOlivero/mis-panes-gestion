@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <div className="flex min-h-screen">
+        <div>
           <Sidebar
             shiftBadge={
               <Suspense fallback={<ShiftBadgeSkeleton />}>
@@ -34,7 +34,7 @@ export default function RootLayout({
             }
           />
           {/* Desktop: ml-64 para compensar sidebar fijo. Mobile: sin margen */}
-          <div className="flex min-h-screen flex-1 flex-col bg-stone-50 lg:ml-64">
+          <div className="flex h-full flex-1 flex-col bg-stone-50 lg:ml-64">
             <Suspense fallback={null}>
               <OrdersUrgentBanner />
             </Suspense>

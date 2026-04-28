@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import {
   createDeliverySaleAction,
   createDeliveryClientAction,
@@ -10,33 +11,37 @@ import {
 } from "@/src/actions/delivery.actions"
 import type {
   DeliveryClient,
-  DailyDeliverySummary,
   DeliverySale,
   DeliveryExpense,
 } from "@/src/types/delivery.types"
 import { formatCurrency } from "@/src/lib/utils/currency"
 import { formatDateTime } from "@/src/lib/utils/dates"
 import {
-  Plus, Trash2, User, UserPlus, AlertCircle, CheckCircle2,
+  Plus, Trash2, User, UserPlus, AlertCircle,
   ArrowUpCircle, Truck, TrendingDown, Wallet,
 } from "lucide-react"
 
 interface Props {
-  summary:      DailyDeliverySummary
+  sales:        DeliverySale[]
+  setSales:     Dispatch<SetStateAction<DeliverySale[]>>
+  expenses:     DeliveryExpense[]
+  setExpenses:  Dispatch<SetStateAction<DeliveryExpense[]>>
   clients:      DeliveryClient[]
   selectedDate: string
   onDateChange: (date: string) => void
 }
 
-export function DeliveryDayClient({ summary: initialSummary, clients: initialClients, selectedDate, onDateChange }: Props) {
+export function DeliveryDayClient({
+  sales, setSales,
+  expenses, setExpenses,
+  clients: initialClients,
+  selectedDate,
+  onDateChange,
+}: Props) {
   const [isPending, startTransition] = useTransition()
+  const [clients, setClients] = useState<DeliveryClient[]>(initialClients)
 
-  // ── Estado local optimista ──────────────────────────────────────────────────
-  const [sales,    setSales]    = useState<DeliverySale[]>(initialSummary.sales)
-  const [expenses, setExpenses] = useState<DeliveryExpense[]>(initialSummary.expenses)
-  const [clients,  setClients]  = useState<DeliveryClient[]>(initialClients)
-
-  // Totales derivados del estado local
+  // Totales derivados directamente del estado
   const totalSales    = sales.reduce((s, r) => s + r.total, 0)
   const totalExpenses = expenses.reduce((s, r) => s + r.total, 0)
   const netBalance    = totalSales - totalExpenses
@@ -76,9 +81,8 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
       ? (clients.find((c) => c.id === selectedClient)?.name ?? "Cliente")
       : tempName.trim()
 
-    // Optimista: agregar inmediatamente con ID temporal
     const tempId = `temp-${Date.now()}`
-    const optimisticSale: DeliverySale = {
+    const optimistic: DeliverySale = {
       id:             tempId,
       saleDate:       selectedDate,
       clientId:       saleMode === "fixed" ? selectedClient : null,
@@ -89,19 +93,25 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
       notes:          saleNotes.trim() || null,
       createdAt:      new Date().toISOString(),
     }
-    setSales((prev) => [...prev, optimisticSale])
+
+    // Capturar valores antes de resetear
+    const capturedMode   = saleMode!
+    const capturedClient = selectedClient
+    const capturedTemp   = tempName.trim()
+    const capturedNotes  = saleNotes.trim()
+
+    setSales((prev) => [...prev, optimistic])
     resetSaleForm()
 
     startTransition(async () => {
       const result = await createDeliverySaleAction({
         saleDate:       selectedDate,
-        clientId:       saleMode === "fixed" ? selectedClient : undefined,
-        clientTempName: saleMode === "temp"  ? tempName.trim() : undefined,
+        clientId:       capturedMode === "fixed" ? capturedClient : undefined,
+        clientTempName: capturedMode === "temp"  ? capturedTemp   : undefined,
         total:          amt,
-        notes:          saleNotes.trim() || undefined,
+        notes:          capturedNotes || undefined,
       })
       if (!result.success) {
-        // Revertir si falla
         setSales((prev) => prev.filter((s) => s.id !== tempId))
         setSaleError(result.error)
       }
@@ -110,12 +120,12 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
 
   // ── Eliminar venta — optimista ──────────────────────────────────────────────
   function handleDeleteSale(saleId: string) {
-    const prev = sales.find((s) => s.id === saleId)
-    setSales((s) => s.filter((x) => x.id !== saleId))
+    const removed = sales.find((s) => s.id === saleId)
+    setSales((prev) => prev.filter((s) => s.id !== saleId))
     startTransition(async () => {
       const result = await deleteDeliverySaleAction(saleId)
-      if (!result.success && prev) {
-        setSales((s) => [...s, prev])
+      if (!result.success && removed) {
+        setSales((prev) => [...prev, removed])
       }
     })
   }
@@ -126,9 +136,12 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
     if (!newClientName.trim()) { setClientError("Escribí un nombre."); return }
     startTransition(async () => {
       const result = await createDeliveryClientAction({ name: newClientName.trim() })
-      if (!result.success) { setClientError(result.error) } else {
+      if (!result.success) {
+        setClientError(result.error)
+      } else {
         setClients((prev) => [...prev, result.data].sort((a, b) => a.name.localeCompare(b.name)))
-        setNewClientName(""); setShowNewClient(false); setSelectedClient(result.data.id); setSaleMode("fixed")
+        setNewClientName(""); setShowNewClient(false)
+        setSelectedClient(result.data.id); setSaleMode("fixed")
       }
     })
   }
@@ -140,38 +153,43 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
     if (!expenseName.trim()) { setExpenseError("Escribí el nombre del gasto."); return }
     if (!amt || amt <= 0)    { setExpenseError("Ingresá un monto válido."); return }
 
+    const capturedName  = expenseName.trim()
+    const capturedTotal = amt
+
     const tempId = `temp-${Date.now()}`
-    const optimisticExpense: DeliveryExpense = {
+    const optimistic: DeliveryExpense = {
       id:          tempId,
       expenseDate: selectedDate,
-      name:        expenseName.trim(),
-      total:       amt,
+      name:        capturedName,
+      total:       capturedTotal,
       createdAt:   new Date().toISOString(),
     }
-    setExpenses((prev) => [...prev, optimisticExpense])
+
+    setExpenses((prev) => [...prev, optimistic])
     setExpenseName(""); setExpenseTotal(""); setShowExpenseForm(false)
 
     startTransition(async () => {
       const result = await createDeliveryExpenseAction({
         expenseDate: selectedDate,
-        name:        expenseName.trim(),
-        total:       amt,
+        name:        capturedName,
+        total:       capturedTotal,
       })
       if (!result.success) {
         setExpenses((prev) => prev.filter((e) => e.id !== tempId))
         setExpenseError(result.error)
+        setShowExpenseForm(true)
       }
     })
   }
 
   // ── Eliminar gasto — optimista ──────────────────────────────────────────────
   function handleDeleteExpense(expenseId: string) {
-    const prev = expenses.find((e) => e.id === expenseId)
-    setExpenses((e) => e.filter((x) => x.id !== expenseId))
+    const removed = expenses.find((e) => e.id === expenseId)
+    setExpenses((prev) => prev.filter((e) => e.id !== expenseId))
     startTransition(async () => {
       const result = await deleteDeliveryExpenseAction(expenseId)
-      if (!result.success && prev) {
-        setExpenses((e) => [...e, prev])
+      if (!result.success && removed) {
+        setExpenses((prev) => [...prev, removed])
       }
     })
   }
@@ -182,7 +200,7 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
   return (
     <div className="space-y-6">
 
-      {/* ── Tres stats ─────────────────────────────────────────────────────── */}
+      {/* Stats */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="card">
           <div className="card-body">
@@ -198,6 +216,7 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
             </div>
           </div>
         </div>
+
         <div className="card">
           <div className="card-body">
             <div className="flex items-start justify-between">
@@ -212,12 +231,15 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
             </div>
           </div>
         </div>
+
         <div className="card">
           <div className="card-body">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-400">Ganancia neta</p>
-                <p className={`mt-2 text-3xl font-bold tabular-nums sm:text-4xl ${isPositive ? "text-green-700" : "text-red-600"}`}>{formatCurrency(netBalance)}</p>
+                <p className={`mt-2 text-3xl font-bold tabular-nums sm:text-4xl ${isPositive ? "text-green-700" : "text-red-600"}`}>
+                  {formatCurrency(netBalance)}
+                </p>
                 <p className="mt-1.5 text-xs text-stone-400">ventas − gastos</p>
               </div>
               <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${isPositive ? "bg-green-50" : "bg-red-50"}`}>
@@ -228,13 +250,18 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
         </div>
       </div>
 
-      {/* ── Selector de fecha ─────────────────────────────────────────────── */}
+      {/* Selector de fecha */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium text-stone-600">Fecha:</label>
-        <input type="date" className="form-input w-auto" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} />
+        <input
+          type="date"
+          className="form-input w-auto"
+          value={selectedDate}
+          onChange={(e) => onDateChange(e.target.value)}
+        />
       </div>
 
-      {/* ── Tabla de ventas ───────────────────────────────────────────────── */}
+      {/* Tabla de ventas */}
       <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-2">
@@ -243,22 +270,31 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
           </div>
           <span className="text-xs text-stone-400">{sales.length} registradas</span>
         </div>
+
         {sales.length === 0 ? (
-          <div className="card-body"><p className="py-5 text-center text-sm text-stone-400">Sin entregas para esta fecha.</p></div>
+          <div className="card-body">
+            <p className="py-5 text-center text-sm text-stone-400">Sin entregas para esta fecha.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
-              <thead><tr><th>Cliente</th><th>Notas</th><th className="text-right">Total</th><th>Hora</th><th /></tr></thead>
+              <thead>
+                <tr><th>Cliente</th><th>Notas</th><th className="text-right">Total</th><th>Hora</th><th /></tr>
+              </thead>
               <tbody>
                 {sales.map((sale) => (
-                  <tr key={sale.id} className={sale.id.startsWith("temp-") ? "opacity-60" : ""}>
+                  <tr key={sale.id} className={sale.id.startsWith("temp-") ? "opacity-50" : ""}>
                     <td>
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs ${sale.isTemp ? "bg-stone-100 text-stone-500" : "bg-amber-100 text-amber-700"}`}>
+                        <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs ${
+                          sale.isTemp ? "bg-stone-100 text-stone-500" : "bg-amber-100 text-amber-700"
+                        }`}>
                           {sale.isTemp ? "T" : sale.clientName.charAt(0).toUpperCase()}
                         </span>
                         <span className="font-medium">{sale.clientName}</span>
-                        {sale.isTemp && <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-xs text-stone-400">temporal</span>}
+                        {sale.isTemp && (
+                          <span className="rounded-full bg-stone-100 px-1.5 py-0.5 text-xs text-stone-400">temporal</span>
+                        )}
                       </div>
                     </td>
                     <td className="text-xs text-stone-400">{sale.notes ?? "—"}</td>
@@ -288,7 +324,7 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
         )}
       </div>
 
-      {/* ── Tabla de gastos ───────────────────────────────────────────────── */}
+      {/* Tabla de gastos */}
       <div className="card">
         <div className="card-header">
           <div className="flex items-center gap-2">
@@ -305,35 +341,61 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
                 <label className="form-label">Nombre del gasto</label>
-                <input type="text" className="form-input" placeholder="Ej: Combustible, envases..." value={expenseName} onChange={(e) => setExpenseName(e.target.value)} autoFocus />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ej: Combustible, envases..."
+                  value={expenseName}
+                  onChange={(e) => setExpenseName(e.target.value)}
+                  autoFocus
+                />
               </div>
               <div className="w-full sm:w-36">
                 <label className="form-label">Monto</label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
-                  <input type="number" className="form-input pl-7" placeholder="0" min="0" value={expenseTotal} onChange={(e) => setExpenseTotal(e.target.value)} />
+                  <input
+                    type="number"
+                    className="form-input pl-7"
+                    placeholder="0"
+                    min="0"
+                    value={expenseTotal}
+                    onChange={(e) => setExpenseTotal(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="btn-danger btn-sm" onClick={handleAddExpense} disabled={expenseAmt <= 0}>
+                <button
+                  className="btn-danger btn-sm"
+                  onClick={handleAddExpense}
+                  disabled={expenseAmt <= 0}
+                >
                   {`Registrar · ${formatCurrency(expenseAmt)}`}
                 </button>
                 <button className="btn-ghost btn-sm" onClick={() => { setShowExpenseForm(false); setExpenseError(null) }}>✕</button>
               </div>
             </div>
-            {expenseError && <p className="mt-2 flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{expenseError}</p>}
+            {expenseError && (
+              <p className="mt-2 flex items-center gap-2 text-sm text-red-600">
+                <AlertCircle className="size-4 shrink-0" />{expenseError}
+              </p>
+            )}
           </div>
         )}
 
         {expenses.length === 0 ? (
-          <div className="card-body"><p className="py-5 text-center text-sm text-stone-400">Sin gastos para esta fecha.</p></div>
+          <div className="card-body">
+            <p className="py-5 text-center text-sm text-stone-400">Sin gastos para esta fecha.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
-              <thead><tr><th>Concepto</th><th>Hora</th><th className="text-right">Total</th><th /></tr></thead>
+              <thead>
+                <tr><th>Concepto</th><th>Hora</th><th className="text-right">Total</th><th /></tr>
+              </thead>
               <tbody>
                 {expenses.map((exp) => (
-                  <tr key={exp.id} className={exp.id.startsWith("temp-") ? "opacity-60" : ""}>
+                  <tr key={exp.id} className={exp.id.startsWith("temp-") ? "opacity-50" : ""}>
                     <td className="font-medium">{exp.name}</td>
                     <td className="tabular-nums text-xs text-stone-400">{formatDateTime(exp.createdAt)}</td>
                     <td className="text-right tabular-nums font-semibold text-red-600">{formatCurrency(exp.total)}</td>
@@ -362,21 +424,28 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
         )}
       </div>
 
-      {/* ── Registrar entrega ─────────────────────────────────────────────── */}
+      {/* Registrar entrega */}
       <div className="card">
         <div className="card-header">
           <ArrowUpCircle className="size-4 text-amber-600" />
           <span className="card-title">Registrar entrega</span>
         </div>
         <div className="card-body space-y-4">
+
           {!saleMode && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-amber-400 hover:bg-amber-50" onClick={() => setSaleMode("fixed")}>
+              <button
+                className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-amber-400 hover:bg-amber-50"
+                onClick={() => setSaleMode("fixed")}
+              >
                 <User className="size-6 text-amber-600" />
                 <span className="text-sm font-medium text-stone-700">Cliente fijo</span>
                 <span className="text-xs text-stone-400">Seleccionar de la lista</span>
               </button>
-              <button className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-stone-400 hover:bg-stone-50" onClick={() => setSaleMode("temp")}>
+              <button
+                className="flex flex-col items-center gap-2 rounded-xl border-2 border-stone-200 p-4 transition-all hover:border-stone-400 hover:bg-stone-50"
+                onClick={() => setSaleMode("temp")}
+              >
                 <UserPlus className="size-6 text-stone-500" />
                 <span className="text-sm font-medium text-stone-700">Cliente temporal</span>
                 <span className="text-xs text-stone-400">Sin guardar en lista</span>
@@ -389,7 +458,11 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
               <div>
                 <label className="form-label">Cliente</label>
                 <div className="flex gap-2">
-                  <select className="form-select flex-1" value={selectedClient} onChange={(e) => setSelectedClient(e.target.value)}>
+                  <select
+                    className="form-select flex-1"
+                    value={selectedClient}
+                    onChange={(e) => setSelectedClient(e.target.value)}
+                  >
                     <option value="">Seleccionar cliente...</option>
                     {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -402,7 +475,15 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
                 <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-2">
                   <p className="text-xs font-semibold text-amber-700">Agregar cliente fijo</p>
                   <div className="flex gap-2">
-                    <input type="text" className="form-input flex-1" placeholder="Nombre del cliente" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddClient()} autoFocus />
+                    <input
+                      type="text"
+                      className="form-input flex-1"
+                      placeholder="Nombre del cliente"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddClient()}
+                      autoFocus
+                    />
                     <button className="btn-primary btn-sm" onClick={handleAddClient} disabled={isPending}>Agregar</button>
                     <button className="btn-ghost btn-sm" onClick={() => setShowNewClient(false)}>✕</button>
                   </div>
@@ -415,7 +496,14 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
           {saleMode === "temp" && (
             <div>
               <label className="form-label">Nombre del cliente temporal</label>
-              <input type="text" className="form-input" placeholder="Ej: Almacén Don Pedro" value={tempName} onChange={(e) => setTempName(e.target.value)} autoFocus />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej: Almacén Don Pedro"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                autoFocus
+              />
             </div>
           )}
 
@@ -426,12 +514,26 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
                   <label className="form-label">Total de la entrega</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
-                    <input type="number" className="form-input pl-7" placeholder="0" min="0" step="0.01" value={saleTotal} onChange={(e) => setSaleTotal(e.target.value)} />
+                    <input
+                      type="number"
+                      className="form-input pl-7"
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      value={saleTotal}
+                      onChange={(e) => setSaleTotal(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div>
                   <label className="form-label">Notas <span className="font-normal text-stone-400">(opcional)</span></label>
-                  <input type="text" className="form-input" placeholder="Ej: 10 panes, 2 facturas..." value={saleNotes} onChange={(e) => setSaleNotes(e.target.value)} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Ej: 10 panes, 2 facturas..."
+                    value={saleNotes}
+                    onChange={(e) => setSaleNotes(e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -442,10 +544,18 @@ export function DeliveryDayClient({ summary: initialSummary, clients: initialCli
                 </div>
               )}
 
-              {saleError && <p className="flex items-center gap-2 text-sm text-red-600"><AlertCircle className="size-4 shrink-0" />{saleError}</p>}
+              {saleError && (
+                <p className="flex items-center gap-2 text-sm text-red-600">
+                  <AlertCircle className="size-4 shrink-0" />{saleError}
+                </p>
+              )}
 
               <div className="flex gap-3">
-                <button className="btn-primary flex-1" onClick={handleAddSale} disabled={saleAmt <= 0}>
+                <button
+                  className="btn-primary flex-1"
+                  onClick={handleAddSale}
+                  disabled={saleAmt <= 0}
+                >
                   {`Registrar entrega · ${formatCurrency(saleAmt)}`}
                 </button>
                 <button className="btn-secondary" onClick={resetSaleForm}>Cancelar</button>

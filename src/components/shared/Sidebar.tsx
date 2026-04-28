@@ -35,10 +35,6 @@ export function Sidebar({ shiftBadge }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Cerrar al navegar
-  // useEffect(() => { setOpen(false) }, [pathname])
-
-  // Bloquear scroll del body cuando el drawer está abierto
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {
@@ -55,6 +51,7 @@ export function Sidebar({ shiftBadge }: Props) {
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-600">
               <Croissant className="size-4 text-white" />
             </div>
+
             <div>
               <p className="text-sm font-semibold leading-none text-stone-900">
                 Panteca

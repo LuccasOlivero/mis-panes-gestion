@@ -17,19 +17,21 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
 
   function handleAdd() {
     setError(null)
-    if (!content.trim()) { setError("Escribí el contenido de la nota."); return }
+    const trimmed = content.trim()
+    if (!trimmed) { setError("Escribí el contenido de la nota."); return }
 
     const tempId = `temp-${Date.now()}`
     const optimistic: DeliveryNote = {
       id:        tempId,
-      content:   content.trim(),
+      content:   trimmed,
       createdAt: new Date().toISOString(),
     }
     setNotes((prev) => [optimistic, ...prev])
-    setContent(""); setShowForm(false)
+    setContent("")
+    setShowForm(false)
 
     startTransition(async () => {
-      const result = await createDeliveryNoteAction({ content: optimistic.content })
+      const result = await createDeliveryNoteAction({ content: trimmed })
       if (!result.success) {
         setNotes((prev) => prev.filter((n) => n.id !== tempId))
         setError(result.error)
@@ -39,11 +41,13 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
   }
 
   function handleDelete(noteId: string) {
-    const prev = notes.find((n) => n.id === noteId)
-    setNotes((n) => n.filter((x) => x.id !== noteId))
+    const removed = notes.find((n) => n.id === noteId)
+    setNotes((prev) => prev.filter((n) => n.id !== noteId))
     startTransition(async () => {
       const result = await deleteDeliveryNoteAction(noteId)
-      if (!result.success && prev) setNotes((n) => [prev, ...n])
+      if (!result.success && removed) {
+        setNotes((prev) => [removed, ...prev])
+      }
     })
   }
 
@@ -70,12 +74,18 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
               onChange={(e) => setContent(e.target.value)}
               autoFocus
             />
-            {error && <p className="flex items-center gap-2 text-xs text-red-600"><AlertCircle className="size-3.5 shrink-0" />{error}</p>}
+            {error && (
+              <p className="flex items-center gap-2 text-xs text-red-600">
+                <AlertCircle className="size-3.5 shrink-0" />{error}
+              </p>
+            )}
             <div className="flex gap-2">
               <button className="btn-primary btn-sm flex-1" onClick={handleAdd} disabled={isPending}>
                 {isPending ? "Guardando..." : "Guardar nota"}
               </button>
-              <button className="btn-ghost btn-sm" onClick={() => { setShowForm(false); setError(null) }}>Cancelar</button>
+              <button className="btn-ghost btn-sm" onClick={() => { setShowForm(false); setError(null) }}>
+                Cancelar
+              </button>
             </div>
           </div>
         )}
@@ -85,7 +95,12 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
         )}
 
         {notes.map((note) => (
-          <div key={note.id} className={`flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/40 p-4 ${note.id.startsWith("temp-") ? "opacity-60" : ""}`}>
+          <div
+            key={note.id}
+            className={`flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/40 p-4 transition-opacity ${
+              note.id.startsWith("temp-") ? "opacity-50" : ""
+            }`}
+          >
             <StickyNote className="mt-0.5 size-4 shrink-0 text-amber-500" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-stone-800 whitespace-pre-wrap">{note.content}</p>
