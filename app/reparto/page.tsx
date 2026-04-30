@@ -1,35 +1,37 @@
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
-import { format } from "date-fns"
+import { format } from "date-fns";
 import {
   getDailyDeliverySummaryAction,
   getDeliveryClientsAction,
   getDeliveryNotesAction,
-} from "@/src/actions/delivery.actions"
-import { DeliveryPageClient } from "@/src/components/reparto/DeliveryPageClient"
-import { Truck } from "lucide-react"
+} from "@/src/actions/delivery.actions";
+import { DeliveryPageClient } from "@/src/components/reparto/DeliveryPageClient";
+import { Truck } from "lucide-react";
 
 export default async function RepartoPage() {
-  const today = format(new Date(), "yyyy-MM-dd")
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const [summaryRes, clientsRes, notesRes] = await Promise.all([
     getDailyDeliverySummaryAction(today),
     getDeliveryClientsAction(),
     getDeliveryNotesAction(),
-  ])
+  ]);
 
-  const summary = summaryRes.success ? summaryRes.data : {
-    date:          today,
-    totalSales:    0,
-    totalExpenses: 0,
-    netBalance:    0,
-    salesCount:    0,
-    sales:         [],
-    expenses:      [],
-  }
+  const summary = summaryRes.success
+    ? summaryRes.data
+    : {
+        date: today,
+        totalSales: 0,
+        totalExpenses: 0,
+        netBalance: 0,
+        salesCount: 0,
+        sales: [],
+        expenses: [],
+      };
 
-  const clients = clientsRes.success ? clientsRes.data : []
-  const notes   = notesRes.success   ? notesRes.data   : []
+  const clients = clientsRes.success ? clientsRes.data : [];
+  const notes = notesRes.success ? notesRes.data : [];
 
   return (
     <div>
@@ -51,5 +53,5 @@ export default async function RepartoPage() {
         />
       </div>
     </div>
-  )
+  );
 }

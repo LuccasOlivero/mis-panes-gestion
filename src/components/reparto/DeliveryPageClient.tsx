@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { getDailyDeliverySummaryAction } from "@/src/actions/delivery.actions"
+import { useState, useTransition } from "react";
+import { getDailyDeliverySummaryAction } from "@/src/actions/delivery.actions";
 import type {
   DeliveryClient,
   DailyDeliverySummary,
   DeliveryNote,
   DeliverySale,
   DeliveryExpense,
-} from "@/src/types/delivery.types"
-import { DeliveryDayClient } from "./DeliveryDayClient"
-import { DeliveryNotesClient } from "./DeliveryNotesClient"
+} from "@/src/types/delivery.types";
+import { DeliveryDayClient } from "./DeliveryDayClient";
+import { DeliveryNotesClient } from "./DeliveryNotesClient";
 
 interface Props {
-  initialSummary: DailyDeliverySummary
-  initialDate:    string
-  clients:        DeliveryClient[]
-  notes:          DeliveryNote[]
+  initialSummary: DailyDeliverySummary;
+  initialDate: string;
+  clients: DeliveryClient[];
+  notes: DeliveryNote[];
 }
 
 export function DeliveryPageClient({
@@ -25,27 +25,30 @@ export function DeliveryPageClient({
   clients,
   notes,
 }: Props) {
-  const [date,     setDate]     = useState(initialDate)
-  const [, startTransition]     = useTransition()
+  const [date, setDate] = useState(initialDate);
+  const [, startTransition] = useTransition();
 
   // Estado centralizado — única fuente de verdad para ventas y gastos
-  const [sales,    setSales]    = useState<DeliverySale[]>(initialSummary.sales)
-  const [expenses, setExpenses] = useState<DeliveryExpense[]>(initialSummary.expenses)
+  const [sales, setSales] = useState<DeliverySale[]>(initialSummary.sales);
+  const [expenses, setExpenses] = useState<DeliveryExpense[]>(
+    initialSummary.expenses,
+  );
 
   // Al cambiar de fecha: recargar datos del servidor y reemplazar estado local
   function handleDateChange(newDate: string) {
-    setDate(newDate)
+    setDate(newDate);
     startTransition(async () => {
-      const result = await getDailyDeliverySummaryAction(newDate)
+      const result = await getDailyDeliverySummaryAction(newDate);
       if (result.success) {
-        setSales(result.data.sales)
-        setExpenses(result.data.expenses)
+        setSales(result.data.sales);
+        setExpenses(result.data.expenses);
       }
-    })
+    });
   }
 
   return (
     <div className="space-y-8">
+      <DeliveryNotesClient notes={notes} />
       <DeliveryDayClient
         sales={sales}
         setSales={setSales}
@@ -55,7 +58,6 @@ export function DeliveryPageClient({
         selectedDate={date}
         onDateChange={handleDateChange}
       />
-      <DeliveryNotesClient notes={notes} />
     </div>
-  )
+  );
 }

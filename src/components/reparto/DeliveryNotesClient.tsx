@@ -1,54 +1,77 @@
-"use client"
+"use client";
 
-import { useState, useTransition } from "react"
-import { createDeliveryNoteAction, deleteDeliveryNoteAction } from "@/src/actions/delivery.actions"
-import type { DeliveryNote } from "@/src/types/delivery.types"
-import { formatDateTime } from "@/src/lib/utils/dates"
-import { StickyNote, Plus, Trash2, AlertCircle } from "lucide-react"
+import { useState, useTransition } from "react";
+import {
+  createDeliveryNoteAction,
+  deleteDeliveryNoteAction,
+} from "@/src/actions/delivery.actions";
+import type { DeliveryNote } from "@/src/types/delivery.types";
+import { formatDateTime } from "@/src/lib/utils/dates";
+import { StickyNote, Plus, Trash2, AlertCircle } from "lucide-react";
 
-interface Props { notes: DeliveryNote[] }
+interface Props {
+  notes: DeliveryNote[];
+}
 
 export function DeliveryNotesClient({ notes: initialNotes }: Props) {
-  const [isPending, startTransition] = useTransition()
-  const [notes,     setNotes]        = useState<DeliveryNote[]>(initialNotes)
-  const [content,   setContent]      = useState("")
-  const [error,     setError]        = useState<string | null>(null)
-  const [showForm,  setShowForm]     = useState(false)
+  const [isPending, startTransition] = useTransition();
+  const [notes, setNotes] = useState<DeliveryNote[]>(initialNotes);
+  const [content, setContent] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   function handleAdd() {
-    setError(null)
-    const trimmed = content.trim()
-    if (!trimmed) { setError("Escribí el contenido de la nota."); return }
-
-    const tempId = `temp-${Date.now()}`
-    const optimistic: DeliveryNote = {
-      id:        tempId,
-      content:   trimmed,
-      createdAt: new Date().toISOString(),
+    setError(null);
+    const trimmed = content.trim();
+    if (!trimmed) {
+      setError("Escribí el contenido de la nota.");
+      return;
     }
-    setNotes((prev) => [optimistic, ...prev])
-    setContent("")
-    setShowForm(false)
+
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: DeliveryNote = {
+      id: tempId,
+      content: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+    setNotes((prev) => [optimistic, ...prev]);
+    setContent("");
+    setShowForm(false);
 
     startTransition(async () => {
-      const result = await createDeliveryNoteAction({ content: trimmed })
+      const result = await createDeliveryNoteAction({ content: trimmed });
       if (!result.success) {
-        setNotes((prev) => prev.filter((n) => n.id !== tempId))
-        setError(result.error)
-        setShowForm(true)
+        setNotes((prev) => prev.filter((n) => n.id !== tempId));
+        setError(result.error);
+        setShowForm(true);
       }
-    })
+    });
   }
 
   function handleDelete(noteId: string) {
-    const removed = notes.find((n) => n.id === noteId)
-    setNotes((prev) => prev.filter((n) => n.id !== noteId))
+    const removed = notes.find((n) => n.id === noteId);
+    if (!removed) return;
+
+    const confirmed = window.confirm("¿Seguro que querés eliminar la nota?");
+
+    if (!confirmed) return;
+
+    // Optimistic UI
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+
     startTransition(async () => {
-      const result = await deleteDeliveryNoteAction(noteId)
-      if (!result.success && removed) {
-        setNotes((prev) => [removed, ...prev])
+      try {
+        const result = await deleteDeliveryNoteAction(noteId);
+
+        if (!result.success) {
+          // rollback
+          setNotes((prev) => [removed, ...prev]);
+        }
+      } catch (e) {
+        console.error(e);
+        setNotes((prev) => [removed, ...prev]);
       }
-    })
+    });
   }
 
   return (
@@ -58,7 +81,10 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
           <StickyNote className="size-4 text-amber-500" />
           <span className="card-title">Notas importantes</span>
         </div>
-        <button className="btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
+        <button
+          className="btn-primary btn-sm"
+          onClick={() => setShowForm(!showForm)}
+        >
           <Plus className="size-3.5" /> Nueva nota
         </button>
       </div>
@@ -76,14 +102,25 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
             />
             {error && (
               <p className="flex items-center gap-2 text-xs text-red-600">
-                <AlertCircle className="size-3.5 shrink-0" />{error}
+                <AlertCircle className="size-3.5 shrink-0" />
+                {error}
               </p>
             )}
             <div className="flex gap-2">
-              <button className="btn-primary btn-sm flex-1" onClick={handleAdd} disabled={isPending}>
+              <button
+                className="btn-primary btn-sm flex-1"
+                onClick={handleAdd}
+                disabled={isPending}
+              >
                 {isPending ? "Guardando..." : "Guardar nota"}
               </button>
-              <button className="btn-ghost btn-sm" onClick={() => { setShowForm(false); setError(null) }}>
+              <button
+                className="btn-ghost btn-sm"
+                onClick={() => {
+                  setShowForm(false);
+                  setError(null);
+                }}
+              >
                 Cancelar
               </button>
             </div>
@@ -91,7 +128,9 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
         )}
 
         {notes.length === 0 && !showForm && (
-          <p className="py-4 text-center text-sm text-stone-400">No hay notas guardadas.</p>
+          <p className="py-4 text-center text-sm text-stone-400">
+            No hay notas guardadas.
+          </p>
         )}
 
         {notes.map((note) => (
@@ -103,8 +142,12 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
           >
             <StickyNote className="mt-0.5 size-4 shrink-0 text-amber-500" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-stone-800 whitespace-pre-wrap">{note.content}</p>
-              <p className="mt-1 text-xs text-stone-400">{formatDateTime(note.createdAt)}</p>
+              <p className="text-sm font-medium text-stone-800 whitespace-pre-wrap">
+                {note.content}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                {formatDateTime(note.createdAt)}
+              </p>
             </div>
             <button
               className="shrink-0 p-1 text-stone-300 hover:text-red-500 transition-colors"
@@ -117,5 +160,5 @@ export function DeliveryNotesClient({ notes: initialNotes }: Props) {
         ))}
       </div>
     </div>
-  )
+  );
 }
