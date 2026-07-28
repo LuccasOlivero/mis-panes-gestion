@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getShiftsTotalsAction } from "@/src/actions/shift-totals.actions";
 import {
   getOpenShiftAction,
