@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { EmployeeProfileSummary } from "@/src/types/employee.types";
+import type { AppRole } from "@/src/types/auth.types";
 import {
   employeeRoleLabels,
   attendanceStatusLabels,
@@ -10,6 +11,7 @@ import {
 } from "@/src/modules/employees/domain/employee.entity";
 import { formatCurrency } from "@/src/lib/utils/currency";
 import { formatDate, formatDateTime, formatTime } from "@/src/lib/utils/dates";
+import { EmployeeAccountTab } from "@/src/components/empleados/EmployeeAccountTab";
 import {
   Calendar,
   DollarSign,
@@ -19,9 +21,15 @@ import {
   TrendingDown,
   Plus,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 
-type Tab = "asistencia" | "adelantos" | "sanciones" | "liquidaciones";
+type Tab =
+  | "asistencia"
+  | "adelantos"
+  | "sanciones"
+  | "liquidaciones"
+  | "acceso";
 
 const MONTH_NAMES = [
   "Enero",
@@ -42,10 +50,17 @@ interface Props {
   profile: EmployeeProfileSummary;
   currentMonth: string; // "2026-02"
   employeeId: string;
+  viewerRole: AppRole;
 }
 
-export function EmployeeProfile({ profile, currentMonth, employeeId }: Props) {
+export function EmployeeProfile({
+  profile,
+  currentMonth,
+  employeeId,
+  viewerRole,
+}: Props) {
   const [tab, setTab] = useState<Tab>("asistencia");
+  const isManager = viewerRole === "gerente";
   const {
     employee,
     todayShift,
@@ -53,6 +68,7 @@ export function EmployeeProfile({ profile, currentMonth, employeeId }: Props) {
     advances,
     sanctions,
     salaryRecords,
+    account,
     monthStats,
   } = profile;
 
@@ -69,12 +85,19 @@ export function EmployeeProfile({ profile, currentMonth, employeeId }: Props) {
       ? `${year + 1}-01`
       : `${year}-${String(month + 1).padStart(2, "0")}`;
 
-  const TABS: { id: Tab; label: string; icon: typeof Calendar }[] = [
+  const ALL_TABS: { id: Tab; label: string; icon: typeof Calendar }[] = [
     { id: "asistencia", label: "Asistencia", icon: Calendar },
     { id: "adelantos", label: "Adelantos", icon: DollarSign },
     { id: "sanciones", label: "Sanciones", icon: AlertTriangle },
     { id: "liquidaciones", label: "Liquidaciones", icon: ClipboardList },
+    { id: "acceso", label: "Acceso", icon: KeyRound },
   ];
+
+  // La cajera solo ve Asistencia; Adelantos/Sanciones/Liquidaciones/Acceso
+  // son exclusivos del gerente.
+  const TABS = isManager
+    ? ALL_TABS
+    : ALL_TABS.filter((t) => t.id === "asistencia");
 
   return (
     <div className="space-y-6">
@@ -116,12 +139,14 @@ export function EmployeeProfile({ profile, currentMonth, employeeId }: Props) {
                 <Clock className="size-3.5" />
                 Fichar
               </Link>
-              <Link
-                href={`/empleados/${employeeId}/editar`}
-                className="btn-ghost btn-sm"
-              >
-                <Pencil className="size-3.5" />
-              </Link>
+              {isManager && (
+                <Link
+                  href={`/empleados/${employeeId}/editar`}
+                  className="btn-ghost btn-sm"
+                >
+                  <Pencil className="size-3.5" />
+                </Link>
+              )}
             </div>
           </div>
 
@@ -479,6 +504,11 @@ export function EmployeeProfile({ profile, currentMonth, employeeId }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Tab: Acceso ─────────────────────────────────────────────────────── */}
+      {tab === "acceso" && isManager && (
+        <EmployeeAccountTab employeeId={employeeId} account={account} />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerClient } from "@/src/lib/supabase/server";
+import { requireManager } from "@/src/lib/auth/session";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import type {
   Employee,
@@ -17,6 +18,7 @@ import type {
   CreateAdvanceInput,
   CreateSalaryRecordInput,
 } from "@/src/types/employee.types";
+import type { EmployeeAccount } from "@/src/types/auth.types";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 type Ok = { success: true } | { success: false; error: string };
@@ -90,6 +92,20 @@ function mapSalaryRecord(r: any): EmployeeSalaryRecord {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapAccount(r: any): EmployeeAccount {
+  return {
+    id: r.id,
+    employeeId: r.employee_id,
+    authUserId: r.auth_user_id,
+    username: r.username,
+    appRole: r.app_role,
+    active: r.active,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
 // ─── Empleados ────────────────────────────────────────────────────────────────
 
 export async function getEmployeesAction(): Promise<Result<Employee[]>> {
@@ -147,6 +163,7 @@ export async function updateEmployeeAction(
   input: UpdateEmployeeInput,
 ): Promise<Ok> {
   try {
+    await requireManager();
     const supabase = createServerClient();
     const { error } = await supabase
       .from("employees")
@@ -159,6 +176,27 @@ export async function updateEmployeeAction(
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
+
+    // Si se da de baja al empleado, bloquear también su acceso a la app
+    // (si tiene una cuenta vinculada) para que no pueda seguir logueándose.
+    if (!input.active) {
+      const { data: account } = await supabase
+        .from("employee_accounts")
+        .select("auth_user_id")
+        .eq("employee_id", id)
+        .maybeSingle();
+
+      if (account) {
+        await supabase.auth.admin.updateUserById(account.auth_user_id, {
+          ban_duration: "876000h",
+        });
+        await supabase
+          .from("employee_accounts")
+          .update({ active: false })
+          .eq("employee_id", id);
+      }
+    }
+
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
@@ -255,8 +293,15 @@ export async function getEmployeeProfileAction(
     const monthEnd = endOfMonth(new Date(`${month}-01`)).toISOString();
     const today = format(new Date(), "yyyy-MM-dd");
 
-    const [empRes, shiftsRes, todayRes, advancesRes, sanctionsRes, salaryRes] =
-      await Promise.all([
+    const [
+      empRes,
+      shiftsRes,
+      todayRes,
+      advancesRes,
+      sanctionsRes,
+      salaryRes,
+      accountRes,
+    ] = await Promise.all([
         supabase.from("employees").select("*").eq("id", id).single(),
 
         // Asistencia del mes seleccionado
@@ -297,6 +342,13 @@ export async function getEmployeeProfileAction(
           .select("*")
           .eq("employee_id", id)
           .order("period", { ascending: false }),
+
+        // Cuenta de acceso vinculada (si existe)
+        supabase
+          .from("employee_accounts")
+          .select("*")
+          .eq("employee_id", id)
+          .maybeSingle(),
       ]);
 
     if (empRes.error) throw new Error(empRes.error.message);
@@ -340,6 +392,7 @@ export async function getEmployeeProfileAction(
         advances,
         sanctions,
         salaryRecords,
+        account: accountRes.data ? mapAccount(accountRes.data) : null,
         monthStats,
       },
     };
@@ -354,6 +407,7 @@ export async function createSanctionAction(
   input: CreateSanctionInput,
 ): Promise<Ok> {
   try {
+    await requireManager();
     const supabase = createServerClient();
     const { error } = await supabase.from("employee_sanctions").insert({
       employee_id: input.employeeId,
@@ -374,6 +428,7 @@ export async function createAdvanceAction(
   input: CreateAdvanceInput,
 ): Promise<Ok> {
   try {
+    await requireManager();
     const supabase = createServerClient();
     const { error } = await supabase.from("employee_salary_advances").insert({
       employee_id: input.employeeId,
@@ -394,6 +449,7 @@ export async function createSalaryRecordAction(
   input: CreateSalaryRecordInput,
 ): Promise<Ok> {
   try {
+    await requireManager();
     const supabase = createServerClient();
 
     // Calcular totales del período para el registro

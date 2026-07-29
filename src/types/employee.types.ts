@@ -1,3 +1,5 @@
+import type { EmployeeAccount } from "@/src/types/auth.types";
+
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export type EmployeeRole = "ayudante" | "maestro" | "hornero" | "pastelero";
@@ -116,6 +118,7 @@ export interface EmployeeProfileSummary {
   advances: EmployeeAdvance[];
   sanctions: EmployeeSanction[];
   salaryRecords: EmployeeSalaryRecord[];
+  account: EmployeeAccount | null; // cuenta de acceso vinculada, si existe
   // Totales del mes seleccionado
   monthStats: {
     present: number;

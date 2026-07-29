@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { EmployeeProfile } from "@/src/components/empleados/EmployeeProfile";
 import { ArrowLeft } from "lucide-react";
 import { getEmployeeProfileAction } from "@/src/actions/employee.actions";
+import { getCurrentSession } from "@/src/lib/auth/session";
 
 export default async function EmpleadoPerfilPage({
   params,
@@ -18,7 +19,10 @@ export default async function EmpleadoPerfilPage({
   // Por defecto: mes actual
   const month = mes ?? format(new Date(), "yyyy-MM");
 
-  const result = await getEmployeeProfileAction(id, month);
+  const [result, session] = await Promise.all([
+    getEmployeeProfileAction(id, month),
+    getCurrentSession(),
+  ]);
   if (!result.success) notFound();
 
   return (
@@ -39,6 +43,7 @@ export default async function EmpleadoPerfilPage({
           profile={result.data}
           currentMonth={month}
           employeeId={id}
+          viewerRole={session?.appRole ?? "cajera"}
         />
       </div>
     </div>

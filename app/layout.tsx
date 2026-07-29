@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import "./globals.css";
 import { Sidebar } from "@/src/components/shared/Sidebar";
 import { ShiftStatusBadge } from "@/src/components/shifts/ShiftStatusBadge";
 import { OrdersUrgentBanner } from "@/src/components/reparto/OrdersUrgentBanner";
+import { getCurrentSession } from "@/src/lib/auth/session";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({
@@ -17,31 +19,44 @@ export const metadata: Metadata = {
   description: "Sistema de gestión interno",
 };
 
-export default function RootLayout({
+const BARE_PATHS = ["/login", "/acceso-denegado"];
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-pathname") ?? "";
+  const isBarePath = BARE_PATHS.includes(pathname);
+  const session = isBarePath ? null : await getCurrentSession();
+
   return (
     <html lang="es">
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <div>
-          <Sidebar
-            shiftBadge={
-              <Suspense fallback={<ShiftBadgeSkeleton />}>
-                <ShiftStatusBadge />
+        {isBarePath ? (
+          children
+        ) : (
+          <div>
+            <Sidebar
+              role={session?.appRole}
+              userDisplayName={session?.fullName}
+              shiftBadge={
+                <Suspense fallback={<ShiftBadgeSkeleton />}>
+                  <ShiftStatusBadge />
+                </Suspense>
+              }
+            />
+            {/* Desktop: ml-64 para compensar sidebar fijo. Mobile: sin margen */}
+            <div className="flex h-full flex-1 flex-col bg-stone-50 lg:ml-64">
+              <Suspense fallback={null}>
+                <OrdersUrgentBanner />
               </Suspense>
-            }
-          />
-          {/* Desktop: ml-64 para compensar sidebar fijo. Mobile: sin margen */}
-          <div className="flex h-full flex-1 flex-col bg-stone-50 lg:ml-64">
-            <Suspense fallback={null}>
-              <OrdersUrgentBanner />
-            </Suspense>
-            {/* Padding top en mobile para el botón hamburguesa */}
-            <main className="flex-1 pt-14 lg:pt-0">{children}</main>
+              {/* Padding top en mobile para el botón hamburguesa */}
+              <main className="flex-1 pt-14 lg:pt-0">{children}</main>
+            </div>
           </div>
-        </div>
+        )}
       </body>
     </html>
   );

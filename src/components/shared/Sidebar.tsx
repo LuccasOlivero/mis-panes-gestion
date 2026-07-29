@@ -15,8 +15,11 @@ import {
   Menu,
   X,
   Users2,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils/cn";
+import { signOutAction } from "@/src/actions/auth.actions";
+import type { AppRole } from "@/src/types/auth.types";
 
 const NAV_ALL = [
   { href: "/turnos", label: "Turnos", icon: Clock },
@@ -29,26 +32,23 @@ const NAV_ALL = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 
-// Rutas accesibles para el rol empleado (sin dashboard)
-const EMPLEADO_HIDDEN = ["/dashboard"];
+// Rutas ocultas para el rol cajera (acceso restringido)
+const CAJERA_HIDDEN = ["/dashboard"];
 
 interface Props {
   shiftBadge: ReactNode;
-  role?: "admin" | "empleado";
+  role?: AppRole;
+  userDisplayName?: string;
 }
 
-export function Sidebar({ shiftBadge, role }: Props) {
+export function Sidebar({ shiftBadge, role, userDisplayName }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const nav =
-    role === "empleado"
-      ? NAV_ALL.filter((item) => !EMPLEADO_HIDDEN.includes(item.href))
+    role === "cajera"
+      ? NAV_ALL.filter((item) => !CAJERA_HIDDEN.includes(item.href))
       : NAV_ALL;
-
-  // useEffect(() => {
-  //   setOpen(false);
-  // }, [pathname]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -109,8 +109,25 @@ export function Sidebar({ shiftBadge, role }: Props) {
         })}
       </nav>
 
-      <div className="border-t border-stone-100 px-6 py-4">
-        <p className="text-xs text-stone-400">
+      <div className="border-t border-stone-100 px-4 py-3 space-y-2">
+        {userDisplayName && (
+          <div className="flex items-center justify-between gap-2 px-2">
+            <span className="truncate text-xs font-medium text-stone-600">
+              {userDisplayName}
+            </span>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-stone-400 hover:bg-stone-50 hover:text-stone-700"
+                title="Cerrar sesión"
+              >
+                <LogOut className="size-3.5" />
+                Salir
+              </button>
+            </form>
+          </div>
+        )}
+        <p className="px-2 text-xs text-stone-400">
           © {new Date().getFullYear()} Panteca
         </p>
       </div>
